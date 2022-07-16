@@ -14,4 +14,7 @@
 #define DATA6               29
 #define DATA7               27
 
+#define H1                  16
+#define H2                  18
+
 #endif
