@@ -101,10 +101,7 @@ int main (void)
     
     while(key != Q_KEY)
     {
-        // load 1000 bytes from the userport
-        asm("lda %w", CA1_TRIGGER);
-        asm("ora #$E0");
-        asm("tay");
+        asm("ldy #$CD");
 
     pagestart:
         // raise CB2
@@ -121,13 +118,13 @@ int main (void)
         // load byte from userport, save to video memory
         // this should reset CA1 bit
         asm("lda %w", USERPORT_DATA);
-        asm("sta %w,x", VMEM_START);
         
         // set CB2 line low
-        asm("tya");
-        asm("and #$DF");
-        asm("sta %w", CA1_TRIGGER);
-        
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$ED");
+
+        asm("sta %w,x", VMEM_START);
+
         // step video mem pointer
         asm("inx");
 
@@ -139,12 +136,12 @@ int main (void)
 
         // load byte from userport, save to video memory
         asm("lda %w", USERPORT_DATA);
-        asm("sta %w,x", VMEM_START);
         
         // set CB2 line high
-        asm("tya");
-        asm("ora #$E0");
-        asm("sta %w", CA1_TRIGGER);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$CD");
+
+        asm("sta %w,x", VMEM_START);
         
         // step video mem pointer
         asm("inx");
@@ -155,20 +152,20 @@ int main (void)
 
     j2waita:
         // wait for CA1
-        asm("lda %w", CA1_STATUS);
-        asm("and #$02");
-        asm("beq %g", j2waita);
+        //asm("lda %w", CA1_STATUS);
+        //asm("and #$02");
+        //asm("beq %g", j2waita);
 
         // load byte from userport, save to video memory
         // this should reset CA1 bit
         asm("lda %w", USERPORT_DATA);
-        asm("sta %w,x", VMEM_START_2);
         
         // set CB2 line low
-        asm("tya");
-        asm("and #$DF");
-        asm("sta %w", CA1_TRIGGER);
-        
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$ED");
+
+        asm("sta %w,x", VMEM_START_2);
+
         // step video mem pointer
         asm("inx");
 
@@ -180,12 +177,12 @@ int main (void)
 
         // load byte from userport, save to video memory
         asm("lda %w", USERPORT_DATA);
-        asm("sta %w,x", VMEM_START_2);
         
         // set CB2 line high
-        asm("tya");
-        asm("ora #$E0");
-        asm("sta %w", CA1_TRIGGER);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$CD");
+
+        asm("sta %w,x", VMEM_START_2);
         
         // step video mem pointer
         asm("inx");
@@ -203,13 +200,13 @@ int main (void)
         // load byte from userport, save to video memory
         // this should reset CA1 bit
         asm("lda %w", USERPORT_DATA);
-        asm("sta %w,x", VMEM_START_3);
         
         // set CB2 line low
-        asm("tya");
-        asm("and #$DF");
-        asm("sta %w", CA1_TRIGGER);
-        
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$ED");
+
+        asm("sta %w,x", VMEM_START_3);
+
         // step video mem pointer
         asm("inx");
 
@@ -221,18 +218,18 @@ int main (void)
 
         // load byte from userport, save to video memory
         asm("lda %w", USERPORT_DATA);
-        asm("sta %w,x", VMEM_START_3);
         
         // set CB2 line high
-        asm("tya");
-        asm("ora #$E0");
-        asm("sta %w", CA1_TRIGGER);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$CD");
+
+        asm("sta %w,x", VMEM_START_3);
         
         // step video mem pointer
         asm("inx");
         // jump if x != 0
         asm("bne %g", jumper3);
-
+        
     jumper4:
 
     j4waita:
@@ -244,13 +241,13 @@ int main (void)
         // load byte from userport, save to video memory
         // this should reset CA1 bit
         asm("lda %w", USERPORT_DATA);
-        asm("sta %w,x", VMEM_START_4);
         
         // set CB2 line low
-        asm("tya");
-        asm("and #$DF");
-        asm("sta %w", CA1_TRIGGER);
-        
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$ED");
+
+        asm("sta %w,x", VMEM_START_4);
+
         // step video mem pointer
         asm("inx");
 
@@ -262,18 +259,17 @@ int main (void)
 
         // load byte from userport, save to video memory
         asm("lda %w", USERPORT_DATA);
-        asm("sta %w,x", VMEM_START_4);
         
         // set CB2 line high
-        asm("tya");
-        asm("ora #$E0");
-        asm("sta %w", CA1_TRIGGER);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$CD");
+
+        asm("sta %w,x", VMEM_START_4);
         
         // step video mem pointer
         asm("inx");
         // jump if x != 0
         asm("bne %g", jumper4);
-        
         //TEST
         key = PEEK(CURR_KEY);
     }
