@@ -63,6 +63,8 @@ int main(int argc, char** argv)
     uint8_t t = 0;
     outputDataByte(0);
 
+    int dd = atoi(argv[1]);
+
     uint8_t test[1024];
     uint8_t testval = 0;
     delay(1000);
@@ -103,6 +105,7 @@ int main(int argc, char** argv)
                 outputDataByte(test[i]);
                 // signal ready
                 digitalWrite(CA1, 0);
+                delay(dd);
                 digitalWrite(CA1, 1);
                 // wait for CB2 low
                 while (digitalRead(CB2) != 0) {
@@ -114,6 +117,7 @@ int main(int argc, char** argv)
                 outputDataByte(test[i+1]);
                 // signal ready
                 digitalWrite(CA1, 0);
+                delay(dd);
                 digitalWrite(CA1, 1);
                 // wait for CB2 high
                 while (digitalRead(CB2) != 1) {
