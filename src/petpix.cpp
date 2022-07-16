@@ -82,6 +82,8 @@ int main(int argc, char** argv)
 
         
         int page = 0;
+        int pagesInSecond = 0;
+        int lastsecond = 0;
         digitalWrite(CA1, 1);
         printf("starting in 5 seconds..\n");
         delay(5000);
@@ -89,7 +91,7 @@ int main(int argc, char** argv)
 
         while (1) 
         {
-            printf("page %d\n", page);
+            //printf("page %d\n", page);
             int testindex = 0;
             for (int r = 0; r < 25; r++)
             {
@@ -99,26 +101,37 @@ int main(int argc, char** argv)
                 }
             }
             page++;
+            pagesInSecond++;
+            int currSecond = millis() / 1000;
+            if (currSecond > lastsecond) {
+                printf("%d FPS\n", pagesInSecond);
+                pagesInSecond = 0;
+                lastsecond = currSecond;
+            }
 
             for (int i = 0; i < 1024; i += 2)
             {
                 outputDataByte(test[i]);
                 // signal ready
-                digitalWrite(CA1, 0);
-                delay(dd);
                 digitalWrite(CA1, 1);
+                delayMicroseconds(dd);
+                digitalWrite(CA1, 0);
+                //delay(dd);
+                
+                //digitalWrite(CA1, 1);
                 // wait for CB2 low
                 while (digitalRead(CB2) != 0) {
                     //printf("1");
                 };
                 
-                
                 // output data
                 outputDataByte(test[i+1]);
                 // signal ready
-                digitalWrite(CA1, 0);
-                delay(dd);
                 digitalWrite(CA1, 1);
+                delayMicroseconds(dd);
+                digitalWrite(CA1, 0);
+                //delay(dd);
+                
                 // wait for CB2 high
                 while (digitalRead(CB2) != 1) {
                     //printf("2");
