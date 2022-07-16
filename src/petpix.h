@@ -14,7 +14,7 @@
 #define DATA6               29
 #define DATA7               27
 
-#define H1                  16
-#define H2                  18
+#define CA1                  16 // handshake line TO pet
+#define CB2                  18 // handshake line FROM pet
 
 #endif
