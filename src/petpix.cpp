@@ -94,6 +94,9 @@ int main(int argc, char** argv)
             }
         }
         */
+        float time;
+        fread(&time, 1, sizeof(time), fp);
+
         fread(test, 1, 1000, fp);
         page++;
         pagesInSecond++;

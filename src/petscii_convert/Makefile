@@ -8,4 +8,4 @@ INCLUDES := -I$(SHARED_DIR)
 #	g++ -o $(NAME) -std=c++11 $(SOURCES)
 
 petscii_convert: main.cpp $(SOURCES)
-	g++ -o $(NAME) -std=c++11 -lpthread $(INCLUDES) $^
+	g++ -o $(NAME) -std=c++11 $(INCLUDES) $^ -lpthread
