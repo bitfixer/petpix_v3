@@ -20,29 +20,4 @@ int main(int argc, char** argv)
         printf("    asm(\"stx %%w\", CA1_TRIGGER);\n");
         printf("    asm(\"sta %%w\", VMEM_START+%d);\n", i+1);
     }
-
-    /*
-    bb0:
-        // wait for CA1
-        asm("lda %w", CA1_STATUS);
-        asm("and #$02");
-        asm("beq %g", bb0);
-        // load byte from userport, save to video memory
-        // this should reset CA1 bit
-        asm("lda %w", USERPORT_DATA);
-        // set CB2 line low
-        asm("sty %w", CA1_TRIGGER);
-        asm("sta %w,x", VMEM_START);
-    bb1:
-        // wait for CA1
-        asm("lda %w", CA1_STATUS);
-        asm("and #$02");
-        asm("beq %g", bb1);
-        // load byte from userport, save to video memory
-        asm("lda %w", USERPORT_DATA);
-        
-        // set CB2 line high
-        asm("stx %w", CA1_TRIGGER);
-        asm("sta %w,x", VMEM_START);
-    */
 }
