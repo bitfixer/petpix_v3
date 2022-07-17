@@ -116,7 +116,7 @@ int main(int argc, char** argv)
                 outputWaitTime = 0.0;
             }
 
-            for (int i = 0; i < 1024; i += 2)
+            for (int i = 0; i < 1000; i += 2)
             {
                 double t1 = timer->getTime();
                 outputDataByte(test[i]);
