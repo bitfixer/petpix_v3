@@ -75,6 +75,10 @@ void convertImageFromGraySimple(unsigned char* gray,
                           bool output_image,
                           bool output_pts,
                           int frameNumber);
+void writeGlyphToImageAtXY(Image& image,
+                           int x,
+                           int y,
+                           int glyphIndex);
 
 int getMatchingGlyph(double *dctSearch, int searchRange);
 
@@ -252,6 +256,48 @@ void convertThreadFunc(unsigned char* gray,
     }
 }
 
+void writeGlyphToImageAtXY(Image& image, int x, int y, int glyphIndex, int dim)
+{
+    // write to png
+    unsigned char *glyphString;
+    int glyphPix = dim*dim;
+    
+    if (glyphIndex < 128)
+    {
+        glyphString = &glyphs[glyphIndex * glyphPix];
+    }
+    else
+    {
+        glyphString = &glyphs[(glyphIndex - 128)*glyphPix];
+    }
+    
+    int ind;
+    ind = 0;
+    for (int yy = 0; yy < dim; yy ++)
+    {
+        for (int xx = 0; xx < dim; xx++)
+        {
+            Pixel* pixel = image.pixelAt(x+xx, y+yy);
+            
+            if ((glyphString[ind] == '0' && glyphIndex < 128) ||
+                (glyphString[ind] == '1' && glyphIndex >= 128))
+            {
+                pixel->rgb[0] = 0;
+                pixel->rgb[1] = 0;
+                pixel->rgb[2] = 0;
+            }
+            else
+            {
+                pixel->rgb[0] = 1.0;
+                pixel->rgb[1] = 1.0;
+                pixel->rgb[2] = 1.0;
+            }
+            
+            ind++;
+        }
+    }
+}
+
 void convertImageFromGray(unsigned char* gray,
                           int width,
                           int height,
@@ -356,61 +402,6 @@ void convertImageFromGraySimple(unsigned char* gray,
         }
     }
 
-    /*
-    // create dithered image
-    //uint8_t* dImage = new uint8_t[width*height];
-    float* fImage = new float[width*height];
-    //uint8_t* grayPix = gray;
-    
-    // convert to float
-    for (int p = 0; p < width*height; p++)
-    {
-        fImage[p] = (float)gray[p] / 255.0;
-    }
-
-    // now dither image
-    for (int h = 0; h < height; h++)
-    {
-        for (int w = 0; w < width; w++)
-        {
-            float pix = fImage[h*width + w];
-            float pval = pix > 0.5 ? 1.0 : 0.0;
-            float diff = pix - pval;
-
-            //fprintf(stderr, "h %d w %d pix %f pv %f diff %f\n", h, w, pix, pval, diff);
-
-            if (w < (width-1)) {
-                fImage[h*width + (w+1)] += diff * 7.0 / 16.0;
-            }
-
-            if (h < (height-1) && width > 0) {
-                fImage[(h+1)*width + (w-1)] += diff * 7.0 / 16.0;
-            }
-
-            if (h < (height-1)) {
-                fImage[(h+1)*width + w] += diff * 5.0 / 16.0;
-            }
-
-            if (h < (height-1) && w < (width-1)) {
-                fImage[(h+1)*width + (w+1)] += diff * 1.0 / 16.0;
-            }
-
-            Pixel* pixel = ditheredImage.pixelAt(w, h);
-            if (pval == 0.0) {
-                gray[h*width + w] = 0;
-                pixel->rgb[0] = 0.0;
-                pixel->rgb[1] = 0.0;
-                pixel->rgb[2] = 0.0;
-            } else {
-                gray[h*width + w] = 255;
-                pixel->rgb[0] = 1.0;
-                pixel->rgb[1] = 1.0;
-                pixel->rgb[2] = 1.0;
-            }
-        }
-    }
-    */
-
     sprintf(bmpFname, "image_%d.ppm", frameNumber);
     sprintf(ditheredFname, "dithered_%d.ppm", frameNumber);
     if (output_pts)
@@ -475,6 +466,7 @@ void convertImageFromGraySimple(unsigned char* gray,
             fwrite(&matching, 1, 1, fp_out);
             if (output_image)
             {
+                /*
                 // write to png
                 unsigned char *glyphString;
                 int glyphPix = dim*dim;
@@ -513,6 +505,8 @@ void convertImageFromGraySimple(unsigned char* gray,
                         ind++;
                     }
                 }
+                */
+                writeGlyphToImageAtXY(outputImage, x, y, matching, dim);
             }
         }
     }
@@ -542,15 +536,12 @@ void convertImageFromGray2(unsigned char* gray,
     
     int matching;
     unsigned char glyphIndex;
-    fprintf(stderr, "converting rgb frame at time %f\n", time);
-    //sprintf(bmpFname, "image_%0.4f.ppm", time);
-    sprintf(bmpFname, "image_%d.ppm", frameNumber);
+    //fprintf(stderr, "converting rgb frame at time %f\n", time);
     
     if (output_pts)
     {
         // write pts to output stream
         fwrite(&time, sizeof(time), 1, fp_out);
-        //fprintf(stderr, "output pts!\n");
     }
 
     for (int y = 0; y < height; y += dim)
@@ -584,54 +575,17 @@ void convertImageFromGray2(unsigned char* gray,
             
             if (output_image)
             {
-                // write to png
-                unsigned char *glyphString;
-                int glyphPix = dim*dim;
-                
-                
-                if (matching < 128)
-                {
-                    glyphString = &glyphs[matching * glyphPix];
-                }
-                else
-                {
-                    glyphString = &glyphs[(matching - 128)*glyphPix];
-                }
-                
-                int ind;
-                ind = 0;
-                for (int yy = 0; yy < dim; yy ++)
-                {
-                    for (int xx = 0; xx < dim; xx++)
-                    {
-                        Pixel* pixel = outputImage.pixelAt(x+xx, y+yy);
-                        
-                        if ((glyphString[ind] == '0' && matching < 128) ||
-                            (glyphString[ind] == '1' && matching >= 128))
-                        {
-                            pixel->rgb[0] = 0;
-                            pixel->rgb[1] = 0;
-                            pixel->rgb[2] = 0;
-                        }
-                        else
-                        {
-                            pixel->rgb[0] = 1.0;
-                            pixel->rgb[1] = 1.0;
-                            pixel->rgb[2] = 1.0;
-                        }
-                        
-                        ind++;
-                    }
-                }
+                writeGlyphToImageAtXY(outputImage, x, y, matching, dim);
             }
         }
     }
     if (output_image)
     {
+        sprintf(bmpFname, "image_%d.ppm", frameNumber);
         outputImage.writePPM(bmpFname);
     }
     
-    //fprintf(stderr, "dct time %lf match time %lf conversion time %lf\n", dctTime, matchTime, convTime);
+    fprintf(stderr, "dct time %lf match time %lf\n", dctTime, matchTime);
 }
 
 double getDctDiffBetween(double *inputA, double *inputB, double sum_A, double sum_B, int dim)
