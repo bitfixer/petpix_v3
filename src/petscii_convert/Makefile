@@ -1,7 +1,7 @@
 SHARED_DIR := ../../bf-shared
 NAME := petscii_convert
 
-SOURCES := $(SHARED_DIR)/Image.cpp $(SHARED_DIR)/timer.cpp dct.cpp
+SOURCES := $(SHARED_DIR)/Image.cpp $(SHARED_DIR)/timer.cpp $(SHARED_DIR)/Ditherer.cpp dct.cpp
 INCLUDES := -I$(SHARED_DIR)
 
 #all:

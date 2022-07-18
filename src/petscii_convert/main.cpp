@@ -7,6 +7,7 @@
 #include "dct.h"
 #include "timer.hpp"
 #include "Image.hpp"
+#include "Ditherer.hpp"
 
 #include <array>
 #include <algorithm>
@@ -65,6 +66,16 @@ void convertImageFromGray2(unsigned char* gray,
                           bool output_pts,
                           int searchRange,
                           int frameNumber);
+void convertImageFromGraySimple(unsigned char* gray,
+                          int width,
+                          int height,
+                          int dim,
+                          float time,
+                          FILE* fp_out,
+                          bool output_image,
+                          bool output_pts,
+                          int frameNumber);
+
 int getMatchingGlyph(double *dctSearch, int searchRange);
 
 typedef enum {
@@ -84,8 +95,9 @@ int main (int argc, char * const argv[]) {
     bool output_image = false;
     bool output_pts = false;
     int searchRange = 30;
+    bool simple_search = false;
     
-    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:")) != -1)
+    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:z")) != -1)
     {
         if (c == 'f') // framerate
         {
@@ -126,6 +138,10 @@ int main (int argc, char * const argv[]) {
         {
             searchRange = atoi(optarg);
         }
+        else if (c == 'z')
+        {
+            simple_search = true;
+        }
     }
     
     int framesize = (pf == RGB) ? width * height * 3 : width * height;
@@ -141,7 +157,14 @@ int main (int argc, char * const argv[]) {
         }
         else if (pf == GRAY)
         {
-            convertImageFromGray2(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, frameNumber);
+            if (simple_search)
+            {
+                convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, frameNumber);
+            }
+            else
+            {
+                convertImageFromGray2(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, frameNumber);
+            }
         }
         frameTime += frameInterval;
         frameNumber++;
@@ -276,6 +299,228 @@ void convertImageFromGray(unsigned char* gray,
     fwrite(outputGlyphs, 1 ,numglyphs, fp_out);
 }
 
+void convertImageFromGraySimple(unsigned char* gray,
+                                int width,
+                                int height,
+                                int dim,
+                                float time,
+                                FILE* fp_out,
+                                bool output_image,
+                                bool output_pts,
+                                int frameNumber)
+{
+    char bmpFname[100];
+    char ditheredFname[100];
+    Image outputImage(width, height);
+    Image inputImage(width, height);
+
+    unsigned char bw_colors[] =
+    {
+        0,      0,      0,
+        255,    255,    255
+    };
+
+    int num_bw_colors = 2;
+    Palette bwPalette(bw_colors, num_bw_colors);
+    Ditherer* ditherer = Ditherer::createFloydSteinbergDitherer();
+
+    int index = 0;
+    for (int h = 0; h < height; h++)
+    {
+        for (int w = 0; w < width; w++)
+        {
+            float p = (float)gray[index++] / 255.0;
+            Pixel* pixel = inputImage.pixelAt(w, h);
+            pixel->rgb[0] = p;
+            pixel->rgb[1] = p;
+            pixel->rgb[2] = p;
+        }
+    }
+
+    ditherer->ditherImageInPlaceWithPalette(inputImage, bwPalette);
+
+    index = 0;
+    for (int h = 0; h < height; h++)
+    {
+        for (int w = 0; w < width; w++)
+        {
+            Pixel* pixel = inputImage.pixelAt(w, h);
+            if (pixel->rgb[0] > 0.5)
+            {
+                gray[index++] = 255;
+            }
+            else
+            {
+                gray[index++] = 0;
+            }
+        }
+    }
+
+    /*
+    // create dithered image
+    //uint8_t* dImage = new uint8_t[width*height];
+    float* fImage = new float[width*height];
+    //uint8_t* grayPix = gray;
+    
+    // convert to float
+    for (int p = 0; p < width*height; p++)
+    {
+        fImage[p] = (float)gray[p] / 255.0;
+    }
+
+    // now dither image
+    for (int h = 0; h < height; h++)
+    {
+        for (int w = 0; w < width; w++)
+        {
+            float pix = fImage[h*width + w];
+            float pval = pix > 0.5 ? 1.0 : 0.0;
+            float diff = pix - pval;
+
+            //fprintf(stderr, "h %d w %d pix %f pv %f diff %f\n", h, w, pix, pval, diff);
+
+            if (w < (width-1)) {
+                fImage[h*width + (w+1)] += diff * 7.0 / 16.0;
+            }
+
+            if (h < (height-1) && width > 0) {
+                fImage[(h+1)*width + (w-1)] += diff * 7.0 / 16.0;
+            }
+
+            if (h < (height-1)) {
+                fImage[(h+1)*width + w] += diff * 5.0 / 16.0;
+            }
+
+            if (h < (height-1) && w < (width-1)) {
+                fImage[(h+1)*width + (w+1)] += diff * 1.0 / 16.0;
+            }
+
+            Pixel* pixel = ditheredImage.pixelAt(w, h);
+            if (pval == 0.0) {
+                gray[h*width + w] = 0;
+                pixel->rgb[0] = 0.0;
+                pixel->rgb[1] = 0.0;
+                pixel->rgb[2] = 0.0;
+            } else {
+                gray[h*width + w] = 255;
+                pixel->rgb[0] = 1.0;
+                pixel->rgb[1] = 1.0;
+                pixel->rgb[2] = 1.0;
+            }
+        }
+    }
+    */
+
+    sprintf(bmpFname, "image_%d.ppm", frameNumber);
+    sprintf(ditheredFname, "dithered_%d.ppm", frameNumber);
+    if (output_pts)
+    {
+        fwrite(&time, sizeof(time), 1, fp_out);
+    }
+
+    inputImage.writePPM(ditheredFname);
+
+    uint8_t* region = new uint8_t[dim*dim];
+    for (int y = 0; y < height; y += dim)
+    {
+        for (int x = 0; x < width; x += dim)
+        {
+            //printf("x, y, %d %d\n", x, y);
+            // copy values into input buffer
+            int index = 0;
+            for (int yy = 0; yy < dim; yy++)
+            {
+                for (int xx = 0; xx < dim; xx++)
+                {
+                    region[index++] = gray[(y+yy)*width + (x+xx)];
+                    //region[index++] = 128;
+                }
+            }
+
+            //printf("1\n");
+            uint32_t min_error = 999999999;
+            uint8_t matching = 0;
+            // now find glyph with minimum error
+            // compare this region against petscii glyphs
+            for (int g = 0; g < 256; g++)
+            {
+                //printf("g %d\n", g);
+                int glyphIndex = (g < 128) ? g : g-128;
+                bool inverse = g >= 128;
+
+                unsigned char* glyph = &glyphs[glyphIndex * 8 * 8];
+                uint32_t error = 0;
+                for (int p = 0; p < dim*dim; p++)
+                {
+                    //printf("p %d\n", p);
+                    //int glyphPix = inverse ? glyph[p] : 1 - glyph[p];
+                    int glyphPix = glyph[p] == '1' ? 255 : 0;
+                    if (inverse)
+                    {
+                        glyphPix = 255 - glyphPix;
+                    }
+
+                    int e = glyphPix - (int)region[p];
+                    //printf("x %d y %d g %d p %d gp %d r %d\n", x, y, g, p, glyphPix, region[p]);
+                    error += e*e;
+                }
+
+                if (error < min_error)
+                {
+                    min_error = error;
+                    matching = g;
+                }
+            }
+
+            fwrite(&matching, 1, 1, fp_out);
+            if (output_image)
+            {
+                // write to png
+                unsigned char *glyphString;
+                int glyphPix = dim*dim;
+                
+                if (matching < 128)
+                {
+                    glyphString = &glyphs[matching * glyphPix];
+                }
+                else
+                {
+                    glyphString = &glyphs[(matching - 128)*glyphPix];
+                }
+                
+                int ind;
+                ind = 0;
+                for (int yy = 0; yy < dim; yy ++)
+                {
+                    for (int xx = 0; xx < dim; xx++)
+                    {
+                        Pixel* pixel = outputImage.pixelAt(x+xx, y+yy);
+                        
+                        if ((glyphString[ind] == '0' && matching < 128) ||
+                            (glyphString[ind] == '1' && matching >= 128))
+                        {
+                            pixel->rgb[0] = 0;
+                            pixel->rgb[1] = 0;
+                            pixel->rgb[2] = 0;
+                        }
+                        else
+                        {
+                            pixel->rgb[0] = 1.0;
+                            pixel->rgb[1] = 1.0;
+                            pixel->rgb[2] = 1.0;
+                        }
+                        
+                        ind++;
+                    }
+                }
+            }
+        }
+    }
+    if (output_image)
+    {
+        outputImage.writePPM(bmpFname);
+    }
+}
 
 void convertImageFromGray2(unsigned char* gray,
                           int width,
