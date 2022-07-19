@@ -78,6 +78,7 @@ void convertImageFromGraySimple(unsigned char* gray,
                           FILE* fp_out,
                           bool output_image,
                           bool output_pts,
+                          int searchRange,
                           int frameNumber);
 void writeGlyphToImageAtXY(Image& image,
                            int x,
@@ -167,7 +168,7 @@ int main (int argc, char * const argv[]) {
         {
             if (simple_search)
             {
-                convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, frameNumber);
+                convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, frameNumber);
             }
             else
             {
@@ -357,13 +358,14 @@ void convertImageFromGraySimple(unsigned char* gray,
                                 FILE* fp_out,
                                 bool output_image,
                                 bool output_pts,
+                                int searchRange,
                                 int frameNumber)
 {
     char bmpFname[100];
     bool predither = false;
     Tools::Timer* timer = Tools::Timer::createTimer();
     double matchTime = 0.0;
-    int brightnessRange = 4000;
+    int brightnessRange = searchRange;
     
     if (predither) {
         char ditheredFname[100];
