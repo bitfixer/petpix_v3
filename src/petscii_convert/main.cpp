@@ -37,6 +37,7 @@ int num_files;
 
 uint8_t* glyphPixels;
 uint32_t* glyphTotalBrightness;
+uint32_t** glyphQuadrantTotalBrightness;
 uint8_t* glyphIndexByBrightness;
 
 
@@ -79,6 +80,7 @@ void convertImageFromGraySimple(unsigned char* gray,
                           bool output_image,
                           bool output_pts,
                           int searchRange,
+                          int quadRange,
                           int frameNumber);
 void writeGlyphToImageAtXY(Image& image,
                            int x,
@@ -104,9 +106,10 @@ int main (int argc, char * const argv[]) {
     bool output_image = false;
     bool output_pts = false;
     int searchRange = 30;
+    int quadRange = 500;
     bool simple_search = false;
     
-    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:z")) != -1)
+    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:")) != -1)
     {
         if (c == 'f') // framerate
         {
@@ -147,6 +150,10 @@ int main (int argc, char * const argv[]) {
         {
             searchRange = atoi(optarg);
         }
+        else if (c == 'q')
+        {
+            quadRange = atoi(optarg);
+        }
         else if (c == 'z')
         {
             simple_search = true;
@@ -168,7 +175,7 @@ int main (int argc, char * const argv[]) {
         {
             if (simple_search)
             {
-                convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, frameNumber);
+                convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber);
             }
             else
             {
@@ -359,6 +366,7 @@ void convertImageFromGraySimple(unsigned char* gray,
                                 bool output_image,
                                 bool output_pts,
                                 int searchRange,
+                                int quadRange,
                                 int frameNumber)
 {
     char bmpFname[100];
@@ -434,6 +442,39 @@ void convertImageFromGraySimple(unsigned char* gray,
             // copy values into input buffer
             int index = 0;
             uint32_t totalBrightness = 0;
+            uint32_t quadrantBrightness[4];
+
+            for (int yy = 0; yy < dim; yy++)
+            {
+                for (int xx = 0; xx < dim; xx++)
+                {
+                    region[index] = gray[(y+yy)*width + (x+xx)];
+                    totalBrightness += region[index];
+                    index++;
+                }
+            }
+
+            int quadrant = 0;
+            index = 0;
+            for (int qy = 0; qy < 2; qy++)
+            {
+                for (int qx = 0; qx < 2; qx++)
+                {
+                    quadrantBrightness[quadrant] = 0;
+                    for (int yy = 0; yy < dim/2; yy++)
+                    {
+                        for (int xx = 0; xx < dim/2; xx++)
+                        {
+                            int ii = index + (qx*4) + (yy*8) + xx;
+                            quadrantBrightness[quadrant] += region[ii];
+                        }
+                    }
+                    quadrant++;
+                }
+                index += 4*8;
+            }
+
+            /*
             for (int yy = 0; yy < dim; yy++)
             {
                 for (int xx = 0; xx < dim; xx++)
@@ -444,6 +485,7 @@ void convertImageFromGraySimple(unsigned char* gray,
                     index++;
                 }
             }
+            */
 
             //printf("1\n");
             uint32_t min_error = 999999999;
@@ -458,24 +500,52 @@ void convertImageFromGraySimple(unsigned char* gray,
             minBrightness = (totalBrightness >= brightnessRange) ? totalBrightness-brightnessRange : 0;
             maxBrightness = totalBrightness + brightnessRange;
 
+            uint32_t minQuadBrightness[4];
+            uint32_t maxQuadBrightness[4];
+            for (int i = 0; i < 4; i++)
+            {
+                if (quadrantBrightness[i] >= quadRange) {
+                    minQuadBrightness[i] = quadrantBrightness[i] - quadRange;
+                } else {
+                    minQuadBrightness[i] = 0;
+                }
+
+                maxQuadBrightness[i] = quadrantBrightness[i] + quadRange;
+            }
+            
+
+
             for (int g = 0; g < 256; g++)
             {
                 if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
                 {
+                    bool check = true;
                     int gi = glyphIndexByBrightness[g];
-
-                    uint8_t* glyph = &glyphPixels[gi * 64];
-                    uint32_t error = 0;
-                    for (int p = 0; p < numpixels; p++)
+                    for (int i = 0; i < 4; i++)
                     {
-                        int e = (int)glyph[p] - (int)region[p];
-                        error += e;
+                        if (glyphQuadrantTotalBrightness[gi][i] < minQuadBrightness[i] || glyphQuadrantTotalBrightness[gi][i] > maxQuadBrightness[i])
+                        {
+                            check = false;
+                            break;
+                        }
                     }
 
-                    if (error < min_error)
+                    if (check)
                     {
-                        min_error = error;
-                        matching = gi;
+
+                        uint8_t* glyph = &glyphPixels[gi * 64];
+                        uint32_t error = 0;
+                        for (int p = 0; p < numpixels; p++)
+                        {
+                            int e = (int)glyph[p] - (int)region[p];
+                            error += e*e;
+                        }
+
+                        if (error < min_error)
+                        {
+                            min_error = error;
+                            matching = gi;
+                        }
                     }
                 }
             }
@@ -849,6 +919,7 @@ void init()
     int gi = 0;
 
     int32_t tempBrightness[256];
+    //int32_t tempQuadrantBrightness[256][4];
     for (int i = 0; i < 128; i++)
     {
         tempBrightness[i] = 0;
@@ -858,7 +929,6 @@ void init()
             tempBrightness[i] += glyphPixels[gi];
             gi++;
         }
-
     }
 
     // inverse
@@ -872,6 +942,44 @@ void init()
             tempBrightness[i+128] += glyphPixels[gi + (128*64)];
             gi++;
         }
+    }
+
+    glyphQuadrantTotalBrightness = (uint32_t**)malloc(sizeof(uint32_t*) * 256);
+    for (int i = 0; i < 256; i++)
+    {
+        glyphQuadrantTotalBrightness[i] = (uint32_t*)malloc(sizeof(uint32_t) * 4);
+    }
+
+    // quadrant brightness
+    for (int i = 0; i < 256; i++)
+    {
+        gi = i*64;
+        int quadrant = 0;
+        for (int qy = 0; qy < 2; qy++)
+        {
+            for (int qx = 0; qx < 2; qx++)
+            {
+                // new quadrant
+                glyphQuadrantTotalBrightness[i][quadrant] = 0;
+                for (int yy = 0; yy < 4; yy++)
+                {
+                    for (int xx = 0; xx < 4; xx++)
+                    {
+                        int gii = gi + (qx*4) + (yy*8) + xx;
+                        glyphQuadrantTotalBrightness[i][quadrant] += glyphPixels[gii];
+                    }
+                }
+                quadrant++;
+            }
+            gi += 4*8;
+        }
+        fprintf(stderr, "glyph %d tb %d qb %d %d %d %d\n", 
+            i,
+            tempBrightness[i],
+            glyphQuadrantTotalBrightness[i][0],
+            glyphQuadrantTotalBrightness[i][1],
+            glyphQuadrantTotalBrightness[i][2],
+            glyphQuadrantTotalBrightness[i][3]);
     }
 
     // inefficient but easy sort
