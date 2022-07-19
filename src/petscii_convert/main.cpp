@@ -82,6 +82,19 @@ void convertImageFromGraySimple(unsigned char* gray,
                           int searchRange,
                           int quadRange,
                           int frameNumber);
+void convertImageFromGraySimpleMultithreaded(
+                                unsigned char* gray,
+                                int width,
+                                int height,
+                                int dim,
+                                float time,
+                                FILE* fp_out,
+                                bool output_image,
+                                bool output_pts,
+                                int searchRange,
+                                int quadRange,
+                                int frameNumber,
+                                int numThreads);
 void writeGlyphToImageAtXY(Image& image,
                            int x,
                            int y,
@@ -175,7 +188,8 @@ int main (int argc, char * const argv[]) {
         {
             if (simple_search)
             {
-                convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber);
+                //convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber);
+                convertImageFromGraySimpleMultithreaded(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber,25);
             }
             else
             {
@@ -356,6 +370,137 @@ void convertImageFromGray(unsigned char* gray,
     // write the output
     fwrite(outputGlyphs, 1 ,numglyphs, fp_out);
 }
+
+void convertThread(uint8_t* pixels,
+                   uint8_t* results,
+                   int width,
+                   int height,
+                   int dim,
+                   int brightnessRange)
+{
+    uint8_t* region = new uint8_t[dim*dim];
+    int numpixels = dim*dim;
+    int resultIndex = 0;
+    for (int y = 0; y < height; y += dim)
+    {
+        for (int x = 0; x < width; x += dim)
+        {
+            int index = 0;
+            uint32_t totalBrightness = 0;
+            for (int yy = 0; yy < dim; yy++)
+            {
+                for (int xx = 0; xx < dim; xx++)
+                {
+                    region[index] = pixels[(y+yy)*width + (x+xx)];
+                    totalBrightness += region[index];
+                    index++;
+                }
+            }
+
+            uint32_t min_error = 999999999;
+            uint8_t matching = 0;
+            uint32_t minBrightness = (totalBrightness >= brightnessRange) ? totalBrightness-brightnessRange : 0;
+            uint32_t maxBrightness = totalBrightness + brightnessRange;
+
+            for (int g = 0; g < 256; g++)
+            {
+                if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
+                {
+                    int gi = glyphIndexByBrightness[g];
+                    uint8_t* glyph = &glyphPixels[gi * 64];
+                    uint32_t error = 0;
+                    for (int p = 0; p < numpixels; p++)
+                    {
+                        int e = (int)glyph[p] - (int)region[p];
+                        error += e*e;
+                    }
+
+                    if (error < min_error)
+                    {
+                        min_error = error;
+                        matching = gi;
+                    }
+                }
+            }
+            results[resultIndex++] = matching;
+        }
+    }
+    delete(region);
+}
+
+void convertImageFromGraySimpleMultithreaded(
+                                unsigned char* gray,
+                                int width,
+                                int height,
+                                int dim,
+                                float time,
+                                FILE* fp_out,
+                                bool output_image,
+                                bool output_pts,
+                                int searchRange,
+                                int quadRange,
+                                int frameNumber,
+                                int numThreads)
+{
+    Tools::Timer* timer = Tools::Timer::createTimer();
+    Image outputImage(width, height);
+    int rows = height / dim;
+    int rowsPerThread = rows / numThreads; // make sure this is divisible evenly
+    int charactersPerRow = width / dim;
+    int charactersPerThread = rowsPerThread * charactersPerRow;
+
+    uint8_t** threadResults = (uint8_t**)malloc(sizeof(uint8_t*) * numThreads);
+    for (int i = 0; i < numThreads; i++)
+    {
+        threadResults[i] = (uint8_t*)malloc(sizeof(uint8_t) * charactersPerThread);
+    }
+
+    uint8_t* threadRowPtr = gray;
+    std::thread** threads = (std::thread**)malloc(sizeof(std::thread*) * numThreads);
+
+    timer->start();
+    for (int i = 0; i < numThreads; i++)
+    {
+        // launch one thread per section
+        threads[i] = new std::thread(convertThread, threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange);
+        threadRowPtr += (rowsPerThread*dim) * width;
+    }
+
+    for (int i = 0; i < numThreads; i++)
+    {
+        threads[i]->join();
+        delete(threads[i]);
+    }
+    double elapsed = timer->getTime();
+
+    int y = 0;
+    for (int i = 0; i < numThreads; i++)
+    {
+        int resultIndex = 0;
+        for (int r = 0; r < rowsPerThread; r++)
+        {
+            for (int c = 0; c < charactersPerRow; c++)
+            {
+                int x = c * dim;
+                writeGlyphToImageAtXY(outputImage, x, y, threadResults[i][resultIndex++], dim);
+            }
+            y += dim;
+        }
+    }
+    char fname[100];
+    sprintf(fname, "image_%04d.ppm", frameNumber);
+    outputImage.writePPM(fname);
+
+    free(threads);
+    for (int i = 0; i < numThreads; i++)
+    {
+        free(threadResults[i]);
+    }
+    free(threadResults);
+
+    fprintf(stderr, "elapsed: %f\n", elapsed);
+}
+
 
 void convertImageFromGraySimple(unsigned char* gray,
                                 int width,
@@ -558,6 +703,8 @@ void convertImageFromGraySimple(unsigned char* gray,
             }
         }
     }
+    delete(region);
+
     if (output_image)
     {
         outputImage.writePPM(bmpFname);
