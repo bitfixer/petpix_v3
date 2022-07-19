@@ -37,8 +37,11 @@ int num_files;
 
 uint8_t* glyphPixels;
 uint32_t* glyphTotalBrightness;
+
 uint32_t** glyphQuadrantTotalBrightness;
-uint8_t* glyphIndexByBrightness;
+uint32_t** glyph16TotalBrightness;
+
+//uint8_t* glyphIndexByBrightness;
 
 
 void init();
@@ -394,6 +397,7 @@ void convertThread(uint8_t* pixels,
     uint8_t* region = new uint8_t[dim*dim];
     int numpixels = dim*dim;
     int resultIndex = 0;
+    uint32_t sixteenthBrightness[16];
     uint32_t quadrantBrightness[4];
     for (int y = 0; y < height; y += dim)
     {
@@ -411,6 +415,32 @@ void convertThread(uint8_t* pixels,
                 }
             }
 
+            // get 16th brightness
+            int section = 0;
+            index = 0;
+            for (int sy = 0; sy < 4; sy++)
+            {
+                for (int sx = 0; sx < 4; sx++)
+                {
+                    sixteenthBrightness[section] = 0;
+                    for (int yy = 0; yy < dim/4; yy++)
+                    {
+                        for (int xx = 0; xx < dim/4; xx++)
+                        {
+                            int ii = index + (sy*2*8) + (sx*2) + (yy*8) + xx;
+                            sixteenthBrightness[section] += region[ii];
+                        }
+                    }
+                    section++;
+                }
+            }
+
+            quadrantBrightness[0] = sixteenthBrightness[0] + sixteenthBrightness[1] + sixteenthBrightness[4] + sixteenthBrightness[5];
+            quadrantBrightness[1] = sixteenthBrightness[2] + sixteenthBrightness[3] + sixteenthBrightness[6] + sixteenthBrightness[7];
+            quadrantBrightness[2] = sixteenthBrightness[8] + sixteenthBrightness[9] + sixteenthBrightness[12] + sixteenthBrightness[13];
+            quadrantBrightness[3] = sixteenthBrightness[10] + sixteenthBrightness[11] + sixteenthBrightness[14] + sixteenthBrightness[15];
+
+            /*
             // get quadrant brightness
             int quadrant = 0;
             index = 0;
@@ -431,14 +461,17 @@ void convertThread(uint8_t* pixels,
                 }
                 index += 4*8;
             }
+            */
 
             totalBrightness = quadrantBrightness[0] + quadrantBrightness[1] + quadrantBrightness[2] + quadrantBrightness[3];
 
             uint32_t min_error = 999999999;
             uint8_t matching = 0;
+
             uint32_t minBrightness = (totalBrightness >= brightnessRange) ? totalBrightness-brightnessRange : 0;
             uint32_t maxBrightness = totalBrightness + brightnessRange;
 
+            /*
             uint32_t minQuadBrightness[4];
             uint32_t maxQuadBrightness[4];
             for (int i = 0; i < 4; i++)
@@ -451,54 +484,62 @@ void convertThread(uint8_t* pixels,
 
                 maxQuadBrightness[i] = quadrantBrightness[i] + quadRange;
             }
+            */
 
             int32_t mean_error = 0;
             int32_t totalGlyphsToCheck = 0;
-            bool checkQuad[256];
+            int32_t totalGlyphsSecondStage = 0;
+            bool checkGlyph[256];
             int32_t glyphQuadError[256];
+            int32_t glyphSixteenthError[256];
             
+            // filter only glyphs close enough to total brightness of this region
             for (int g = 0; g < 256; g++)
             {
+                checkGlyph[g] = false;
                 if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
                 {
-                    checkQuad[g] = true;
+                    checkGlyph[g] = true;
                     totalGlyphsToCheck++;
-                }
-                else
-                {
-                    checkQuad[g] = false;
                 }
             }
 
+            // get quad brightness error
             for (int g = 0; g < 256; g++)
             {
                 glyphQuadError[g] = 999999999;
-                //if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
-                if (checkQuad[g])
+                if (checkGlyph[g])
                 {
                     // check error from quadrant brightness
                     uint32_t quad_error = 0;
-                    int gi = glyphIndexByBrightness[g];
+                    //int gi = glyphIndexByBrightness[g];
                     for (int q = 0; q < 4; q++)
                     {
-                        int e = (int)glyphQuadrantTotalBrightness[gi][q] - quadrantBrightness[q];
+                        int e = (int)glyphQuadrantTotalBrightness[g][q] - quadrantBrightness[q];
                         quad_error += e*e;
                     }
                     glyphQuadError[g] = quad_error;
                     mean_error += quad_error / totalGlyphsToCheck;
-                    //totalGlyphsToCheck++;
                 }
             }
-            //mean_error /= totalGlyphsToCheck;
 
             int totalChecked = 0;
-            // do full check on remaining glyphs
+            // only include glyphs with low error
             for (int g = 0; g < 256; g++)
             {
+                checkGlyph[g] = false;
+                if (glyphQuadError[g] <= mean_error/quadMeanDivisor)
+                {
+                    checkGlyph[g] = true; // check sixteenths
+                    totalGlyphsSecondStage++;
+                }
+
+                /*
                 if (glyphQuadError[g] <= mean_error/quadMeanDivisor)
                 {
                     totalChecked++;
-                    int gi = glyphIndexByBrightness[g];
+                    //int gi = glyphIndexByBrightness[g];
+                    int gi = g;
                     uint8_t* glyph = &glyphPixels[gi * 64];
                     uint32_t error = 0;
                     for (int p = 0; p < numpixels; p++)
@@ -512,9 +553,84 @@ void convertThread(uint8_t* pixels,
                         min_error = error;
                         matching = gi;
                     }
+
+                }
+                */
+                
+            }
+
+            // second stage
+            mean_error = 0;
+            for (int g = 0; g < 256; g++)
+            {
+                glyphSixteenthError[g] = 999999999;
+                if (checkGlyph[g])
+                {
+                    uint32_t sError = 0;
+                    for (int i = 0; i < 16; i++)
+                    {
+                        int e = (int)glyph16TotalBrightness[g][i] - (int)sixteenthBrightness[i];
+                        sError += e*e;
+                    }
+                    glyphSixteenthError[g] = sError;
+                    mean_error += sError / totalGlyphsSecondStage;
                 }
             }
-            //fprintf(stderr, "to check %d total checked %d mean %d\n", totalGlyphsToCheck, totalChecked, mean_error);
+
+            /*
+            for (int g = 0; g < 256; g++)
+            {
+                if (checkGlyph[g])
+                {
+                    uint32_t sError = 0;
+                    for (int i = 0; i < 16; i++)
+                    {
+                        int e = (int)glyph16TotalBrightness[g][i] - (int)sixteenthBrightness[i];
+                        sError += e*e;
+                    }
+                    //glyphSixteenthError[g] = sError;
+                    //mean_error += sError / totalGlyphsSecondStage;
+
+                    if (sError < min_error)
+                    {
+                        min_error = sError;
+                        matching = g;
+                    }
+                }
+            }
+            */
+
+            for (int g = 0; g < 256; g++)
+            {
+                checkGlyph[g] = false;
+                if (glyphSixteenthError[g] < mean_error)
+                {
+                    checkGlyph[g] = true;
+                    totalChecked++;
+                }
+            }
+
+            for (int g = 0; g < 256; g++)
+            {
+                if (checkGlyph[g])
+                {
+                    uint8_t* glyph = &glyphPixels[g * 64];
+                    uint32_t error = 0;
+                    for (int p = 0; p < numpixels; p++)
+                    {
+                        int e = (int)glyph[p] - (int)region[p];
+                        error += e*e;
+                    }
+
+                    if (error < min_error)
+                    {
+                        min_error = error;
+                        matching = g;
+                    }
+                }
+            }
+
+            //fprintf(stderr, "check1 %d check2 %d total checked %d\n", totalGlyphsToCheck, totalGlyphsSecondStage, totalChecked);
 
             results[resultIndex++] = matching;
         }
@@ -764,7 +880,8 @@ void convertImageFromGraySimple(unsigned char* gray,
                 if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
                 {
                     bool check = true;
-                    int gi = glyphIndexByBrightness[g];
+                    //int gi = glyphIndexByBrightness[g];
+                    int gi = g;
                     for (int i = 0; i < 4; i++)
                     {
                         if (glyphQuadrantTotalBrightness[gi][i] < minQuadBrightness[i] || glyphQuadrantTotalBrightness[gi][i] > maxQuadBrightness[i])
@@ -1160,7 +1277,7 @@ void init()
 
     glyphPixels = (uint8_t*)malloc(sizeof(uint8_t) * 256 * 64);
     glyphTotalBrightness = (uint32_t*)malloc(sizeof(uint32_t) * 256);
-    glyphIndexByBrightness = (uint8_t*)malloc(sizeof(uint8_t) * 256);
+    //glyphIndexByBrightness = (uint8_t*)malloc(sizeof(uint8_t) * 256);
     // no inverse
     int gi = 0;
 
@@ -1211,13 +1328,12 @@ void init()
                 {
                     for (int xx = 0; xx < 4; xx++)
                     {
-                        int gii = gi + (qx*4) + (yy*8) + xx;
+                        int gii = gi + (qy*4*8) + (qx*4) + (yy*8) + xx;
                         glyphQuadrantTotalBrightness[i][quadrant] += glyphPixels[gii];
                     }
                 }
                 quadrant++;
             }
-            gi += 4*8;
         }
         fprintf(stderr, "glyph %d tb %d qb %d %d %d %d\n", 
             i,
@@ -1228,6 +1344,35 @@ void init()
             glyphQuadrantTotalBrightness[i][3]);
     }
 
+    glyph16TotalBrightness = (uint32_t**)malloc(sizeof(uint32_t*) * 256);
+    for (int i = 0; i < 256; i++)
+    {
+        glyph16TotalBrightness[i] = (uint32_t*)malloc(sizeof(uint32_t) * 16);
+    }
+
+    for (int i = 0; i < 256; i++)
+    {
+        gi = i*64;
+        int section = 0;
+        for (int sy = 0; sy < 4; sy++)
+        {
+            for (int sx = 0; sx < 4; sx++)
+            {
+                glyph16TotalBrightness[i][section] = 0;
+                for (int yy = 0; yy < 2; yy++)
+                {
+                    for (int xx = 0; xx < 2; xx++)
+                    {
+                        int gii = gi + (sy*2*8) + (sx*2) + (yy*8) + xx;
+                        glyph16TotalBrightness[i][section] += glyphPixels[gii];
+                    }
+                }
+                section++;
+            }
+        }
+    }
+
+    /*
     // inefficient but easy sort
     for (int i = 0; i < 256; i++)
     {
@@ -1249,6 +1394,12 @@ void init()
         tempBrightness[highestBrightnessIndex] = -9999;
 
         fprintf(stderr, "%d: glyph brightness %d index %d\n", i, glyphTotalBrightness[i], glyphIndexByBrightness[i]);
+    }
+    */
+
+    for (int i = 0; i < 256; i++)
+    {
+        glyphTotalBrightness[i] = tempBrightness[i];
     }
 
 
