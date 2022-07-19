@@ -178,7 +178,7 @@ int main (int argc, char * const argv[]) {
         {
             numThreads = atoi(optarg);
         }
-        else if (c == 'q')
+        else if (c == 'd')
         {
             quadMeanDivisor = atoi(optarg);
         }
