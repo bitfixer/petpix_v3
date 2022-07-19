@@ -381,11 +381,13 @@ void convertThread(uint8_t* pixels,
                    int width,
                    int height,
                    int dim,
-                   int brightnessRange)
+                   int brightnessRange,
+                   int quadRange)
 {
     uint8_t* region = new uint8_t[dim*dim];
     int numpixels = dim*dim;
     int resultIndex = 0;
+    uint32_t quadrantBrightness[4];
     for (int y = 0; y < height; y += dim)
     {
         for (int x = 0; x < width; x += dim)
@@ -397,21 +399,68 @@ void convertThread(uint8_t* pixels,
                 for (int xx = 0; xx < dim; xx++)
                 {
                     region[index] = pixels[(y+yy)*width + (x+xx)];
-                    totalBrightness += region[index];
+                    //totalBrightness += region[index];
                     index++;
                 }
             }
+
+            // get quadrant brightness
+            int quadrant = 0;
+            index = 0;
+            for (int qy = 0; qy < 2; qy++)
+            {
+                for (int qx = 0; qx < 2; qx++)
+                {
+                    quadrantBrightness[quadrant] = 0;
+                    for (int yy = 0; yy < dim/2; yy++)
+                    {
+                        for (int xx = 0; xx < dim/2; xx++)
+                        {
+                            int ii = index + (qx*4) + (yy*8) + xx;
+                            quadrantBrightness[quadrant] += region[ii];
+                        }
+                    }
+                    quadrant++;
+                }
+                index += 4*8;
+            }
+
+            totalBrightness = quadrantBrightness[0] + quadrantBrightness[1] + quadrantBrightness[2] + quadrantBrightness[3];
 
             uint32_t min_error = 999999999;
             uint8_t matching = 0;
             uint32_t minBrightness = (totalBrightness >= brightnessRange) ? totalBrightness-brightnessRange : 0;
             uint32_t maxBrightness = totalBrightness + brightnessRange;
 
+            uint32_t minQuadBrightness[4];
+            uint32_t maxQuadBrightness[4];
+            for (int i = 0; i < 4; i++)
+            {
+                if (quadrantBrightness[i] >= quadRange) {
+                    minQuadBrightness[i] = quadrantBrightness[i] - quadRange;
+                } else {
+                    minQuadBrightness[i] = 0;
+                }
+
+                maxQuadBrightness[i] = quadrantBrightness[i] + quadRange;
+            }
+
             for (int g = 0; g < 256; g++)
             {
                 if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
                 {
+                    // now check quadrant brightness
+                    bool check = true;
                     int gi = glyphIndexByBrightness[g];
+                    for (int q = 0; q < 4; q++)
+                    {
+                        if (glyphQuadrantTotalBrightness[gi][q] < minQuadBrightness[q] || glyphQuadrantTotalBrightness[gi][q] > maxQuadBrightness[q])
+                        {
+                            check = false;
+                            break;
+                        }
+                    }
+                    
                     uint8_t* glyph = &glyphPixels[gi * 64];
                     uint32_t error = 0;
                     for (int p = 0; p < numpixels; p++)
@@ -467,7 +516,7 @@ void convertImageFromGraySimpleMultithreaded(
     for (int i = 0; i < numThreads; i++)
     {
         // launch one thread per section
-        threads[i] = new std::thread(convertThread, threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange);
+        threads[i] = new std::thread(convertThread, threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange);
         threadRowPtr += (rowsPerThread*dim) * width;
     }
 
