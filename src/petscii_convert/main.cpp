@@ -461,18 +461,21 @@ void convertThread(uint8_t* pixels,
                         }
                     }
                     
-                    uint8_t* glyph = &glyphPixels[gi * 64];
-                    uint32_t error = 0;
-                    for (int p = 0; p < numpixels; p++)
+                    if (check)
                     {
-                        int e = (int)glyph[p] - (int)region[p];
-                        error += e*e;
-                    }
+                        uint8_t* glyph = &glyphPixels[gi * 64];
+                        uint32_t error = 0;
+                        for (int p = 0; p < numpixels; p++)
+                        {
+                            int e = (int)glyph[p] - (int)region[p];
+                            error += e*e;
+                        }
 
-                    if (error < min_error)
-                    {
-                        min_error = error;
-                        matching = gi;
+                        if (error < min_error)
+                        {
+                            min_error = error;
+                            matching = gi;
+                        }
                     }
                 }
             }
