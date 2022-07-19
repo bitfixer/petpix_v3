@@ -121,8 +121,9 @@ int main (int argc, char * const argv[]) {
     int searchRange = 30;
     int quadRange = 500;
     bool simple_search = false;
+    int numThreads = 1;
     
-    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:")) != -1)
+    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:n:")) != -1)
     {
         if (c == 'f') // framerate
         {
@@ -171,6 +172,10 @@ int main (int argc, char * const argv[]) {
         {
             simple_search = true;
         }
+        else if (c == 'n')
+        {
+            numThreads = atoi(optarg);
+        }
     }
     
     int framesize = (pf == RGB) ? width * height * 3 : width * height;
@@ -189,7 +194,7 @@ int main (int argc, char * const argv[]) {
             if (simple_search)
             {
                 //convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber);
-                convertImageFromGraySimpleMultithreaded(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber,25);
+                convertImageFromGraySimpleMultithreaded(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber,numThreads);
             }
             else
             {
