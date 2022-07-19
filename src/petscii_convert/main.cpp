@@ -530,23 +530,26 @@ void convertImageFromGraySimpleMultithreaded(
     }
     double elapsed = timer->getTime();
 
-    int y = 0;
-    for (int i = 0; i < numThreads; i++)
+    if (output_image)
     {
-        int resultIndex = 0;
-        for (int r = 0; r < rowsPerThread; r++)
+        int y = 0;
+        for (int i = 0; i < numThreads; i++)
         {
-            for (int c = 0; c < charactersPerRow; c++)
+            int resultIndex = 0;
+            for (int r = 0; r < rowsPerThread; r++)
             {
-                int x = c * dim;
-                writeGlyphToImageAtXY(outputImage, x, y, threadResults[i][resultIndex++], dim);
+                for (int c = 0; c < charactersPerRow; c++)
+                {
+                    int x = c * dim;
+                    writeGlyphToImageAtXY(outputImage, x, y, threadResults[i][resultIndex++], dim);
+                }
+                y += dim;
             }
-            y += dim;
         }
+        char fname[100];
+        sprintf(fname, "image_%04d.ppm", frameNumber);
+        outputImage.writePPM(fname);
     }
-    char fname[100];
-    sprintf(fname, "image_%04d.ppm", frameNumber);
-    outputImage.writePPM(fname);
 
     free(threads);
     for (int i = 0; i < numThreads; i++)
