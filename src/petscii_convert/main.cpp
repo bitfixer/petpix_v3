@@ -94,7 +94,8 @@ void convertImageFromGraySimpleMultithreaded(
                                 int searchRange,
                                 int quadRange,
                                 int frameNumber,
-                                int numThreads);
+                                int numThreads,
+                                int quadMeanDivisor);
 void writeGlyphToImageAtXY(Image& image,
                            int x,
                            int y,
@@ -122,8 +123,9 @@ int main (int argc, char * const argv[]) {
     int quadRange = 500;
     bool simple_search = false;
     int numThreads = 1;
+    int quadMeanDivisor = 1;
     
-    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:n:")) != -1)
+    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:n:d:")) != -1)
     {
         if (c == 'f') // framerate
         {
@@ -176,6 +178,10 @@ int main (int argc, char * const argv[]) {
         {
             numThreads = atoi(optarg);
         }
+        else if (c == 'q')
+        {
+            quadMeanDivisor = atoi(optarg);
+        }
     }
     
     int framesize = (pf == RGB) ? width * height * 3 : width * height;
@@ -194,7 +200,7 @@ int main (int argc, char * const argv[]) {
             if (simple_search)
             {
                 //convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber);
-                convertImageFromGraySimpleMultithreaded(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber,numThreads);
+                convertImageFromGraySimpleMultithreaded(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber, numThreads, quadMeanDivisor);
             }
             else
             {
@@ -382,7 +388,8 @@ void convertThread(uint8_t* pixels,
                    int height,
                    int dim,
                    int brightnessRange,
-                   int quadRange)
+                   int quadRange,
+                   int quadMeanDivisor)
 {
     uint8_t* region = new uint8_t[dim*dim];
     int numpixels = dim*dim;
@@ -488,7 +495,7 @@ void convertThread(uint8_t* pixels,
             // do full check on remaining glyphs
             for (int g = 0; g < 256; g++)
             {
-                if (glyphQuadError[g] <= mean_error/4)
+                if (glyphQuadError[g] <= mean_error/quadMeanDivisor)
                 {
                     totalChecked++;
                     int gi = glyphIndexByBrightness[g];
@@ -527,7 +534,8 @@ void convertImageFromGraySimpleMultithreaded(
                                 int searchRange,
                                 int quadRange,
                                 int frameNumber,
-                                int numThreads)
+                                int numThreads,
+                                int quadMeanDivisor)
 {
     Tools::Timer* timer = Tools::Timer::createTimer();
     Image outputImage(width, height);
@@ -549,7 +557,7 @@ void convertImageFromGraySimpleMultithreaded(
     for (int i = 0; i < numThreads; i++)
     {
         // launch one thread per section
-        threads[i] = new std::thread(convertThread, threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange);
+        threads[i] = new std::thread(convertThread, threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange, quadMeanDivisor);
         //convertThread(threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange);
         threadRowPtr += (rowsPerThread*dim) * width;
     }
