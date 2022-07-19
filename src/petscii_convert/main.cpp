@@ -35,6 +35,10 @@ int* glyphScoreLookup;
 int* sortedGlyphDctIndices;
 int num_files;
 
+uint8_t* glyphPixels;
+uint32_t* glyphTotalBrightness;
+uint8_t* glyphIndexByBrightness;
+
 
 void init();
 void convertImage(char *filename, int dim, float time = 0.0);
@@ -356,60 +360,68 @@ void convertImageFromGraySimple(unsigned char* gray,
                                 int frameNumber)
 {
     char bmpFname[100];
-    char ditheredFname[100];
+    bool predither = false;
+    Tools::Timer* timer = Tools::Timer::createTimer();
+    double matchTime = 0.0;
+    int brightnessRange = 4000;
+    
+    if (predither) {
+        char ditheredFname[100];
+        Image inputImage(width, height);
+
+        unsigned char bw_colors[] =
+        {
+            0,      0,      0,
+            255,    255,    255
+        };
+
+        int num_bw_colors = 2;
+        Palette bwPalette(bw_colors, num_bw_colors);
+        Ditherer* ditherer = Ditherer::createFloydSteinbergDitherer();
+
+        int index = 0;
+        for (int h = 0; h < height; h++)
+        {
+            for (int w = 0; w < width; w++)
+            {
+                float p = (float)gray[index++] / 255.0;
+                Pixel* pixel = inputImage.pixelAt(w, h);
+                pixel->rgb[0] = p;
+                pixel->rgb[1] = p;
+                pixel->rgb[2] = p;
+            }
+        }
+
+        ditherer->ditherImageInPlaceWithPalette(inputImage, bwPalette);
+
+        index = 0;
+        for (int h = 0; h < height; h++)
+        {
+            for (int w = 0; w < width; w++)
+            {
+                Pixel* pixel = inputImage.pixelAt(w, h);
+                if (pixel->rgb[0] > 0.5)
+                {
+                    gray[index++] = 255;
+                }
+                else
+                {
+                    gray[index++] = 0;
+                }
+            }
+        }
+
+        sprintf(ditheredFname, "dithered_%d.ppm", frameNumber);
+        inputImage.writePPM(ditheredFname);
+    }
+
     Image outputImage(width, height);
-    Image inputImage(width, height);
-
-    unsigned char bw_colors[] =
-    {
-        0,      0,      0,
-        255,    255,    255
-    };
-
-    int num_bw_colors = 2;
-    Palette bwPalette(bw_colors, num_bw_colors);
-    Ditherer* ditherer = Ditherer::createFloydSteinbergDitherer();
-
-    int index = 0;
-    for (int h = 0; h < height; h++)
-    {
-        for (int w = 0; w < width; w++)
-        {
-            float p = (float)gray[index++] / 255.0;
-            Pixel* pixel = inputImage.pixelAt(w, h);
-            pixel->rgb[0] = p;
-            pixel->rgb[1] = p;
-            pixel->rgb[2] = p;
-        }
-    }
-
-    ditherer->ditherImageInPlaceWithPalette(inputImage, bwPalette);
-
-    index = 0;
-    for (int h = 0; h < height; h++)
-    {
-        for (int w = 0; w < width; w++)
-        {
-            Pixel* pixel = inputImage.pixelAt(w, h);
-            if (pixel->rgb[0] > 0.5)
-            {
-                gray[index++] = 255;
-            }
-            else
-            {
-                gray[index++] = 0;
-            }
-        }
-    }
-
     sprintf(bmpFname, "image_%d.ppm", frameNumber);
-    sprintf(ditheredFname, "dithered_%d.ppm", frameNumber);
+    
     if (output_pts)
     {
         fwrite(&time, sizeof(time), 1, fp_out);
     }
-
-    inputImage.writePPM(ditheredFname);
 
     uint8_t* region = new uint8_t[dim*dim];
     for (int y = 0; y < height; y += dim)
@@ -419,93 +431,57 @@ void convertImageFromGraySimple(unsigned char* gray,
             //printf("x, y, %d %d\n", x, y);
             // copy values into input buffer
             int index = 0;
+            uint32_t totalBrightness = 0;
             for (int yy = 0; yy < dim; yy++)
             {
                 for (int xx = 0; xx < dim; xx++)
                 {
-                    region[index++] = gray[(y+yy)*width + (x+xx)];
+                    region[index] = gray[(y+yy)*width + (x+xx)];
                     //region[index++] = 128;
+                    totalBrightness += region[index];
+                    index++;
                 }
             }
 
             //printf("1\n");
             uint32_t min_error = 999999999;
             uint8_t matching = 0;
+            int numpixels = dim*dim;
             // now find glyph with minimum error
             // compare this region against petscii glyphs
+            timer->start();
+            uint32_t minBrightness;
+            uint32_t maxBrightness;
+
+            minBrightness = (totalBrightness >= brightnessRange) ? totalBrightness-brightnessRange : 0;
+            maxBrightness = totalBrightness + brightnessRange;
+
             for (int g = 0; g < 256; g++)
             {
-                //printf("g %d\n", g);
-                int glyphIndex = (g < 128) ? g : g-128;
-                bool inverse = g >= 128;
-
-                unsigned char* glyph = &glyphs[glyphIndex * 8 * 8];
-                uint32_t error = 0;
-                for (int p = 0; p < dim*dim; p++)
+                if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
                 {
-                    //printf("p %d\n", p);
-                    //int glyphPix = inverse ? glyph[p] : 1 - glyph[p];
-                    int glyphPix = glyph[p] == '1' ? 255 : 0;
-                    if (inverse)
+                    int gi = glyphIndexByBrightness[g];
+
+                    uint8_t* glyph = &glyphPixels[gi * 64];
+                    uint32_t error = 0;
+                    for (int p = 0; p < numpixels; p++)
                     {
-                        glyphPix = 255 - glyphPix;
+                        int e = (int)glyph[p] - (int)region[p];
+                        error += e;
                     }
 
-                    int e = glyphPix - (int)region[p];
-                    //printf("x %d y %d g %d p %d gp %d r %d\n", x, y, g, p, glyphPix, region[p]);
-                    error += e*e;
-                }
-
-                if (error < min_error)
-                {
-                    min_error = error;
-                    matching = g;
+                    if (error < min_error)
+                    {
+                        min_error = error;
+                        matching = gi;
+                    }
                 }
             }
+            matchTime += timer->getTime();
 
             fwrite(&matching, 1, 1, fp_out);
             if (output_image)
             {
-                /*
-                // write to png
-                unsigned char *glyphString;
-                int glyphPix = dim*dim;
-                
-                if (matching < 128)
-                {
-                    glyphString = &glyphs[matching * glyphPix];
-                }
-                else
-                {
-                    glyphString = &glyphs[(matching - 128)*glyphPix];
-                }
-                
-                int ind;
-                ind = 0;
-                for (int yy = 0; yy < dim; yy ++)
-                {
-                    for (int xx = 0; xx < dim; xx++)
-                    {
-                        Pixel* pixel = outputImage.pixelAt(x+xx, y+yy);
-                        
-                        if ((glyphString[ind] == '0' && matching < 128) ||
-                            (glyphString[ind] == '1' && matching >= 128))
-                        {
-                            pixel->rgb[0] = 0;
-                            pixel->rgb[1] = 0;
-                            pixel->rgb[2] = 0;
-                        }
-                        else
-                        {
-                            pixel->rgb[0] = 1.0;
-                            pixel->rgb[1] = 1.0;
-                            pixel->rgb[2] = 1.0;
-                        }
-                        
-                        ind++;
-                    }
-                }
-                */
                 writeGlyphToImageAtXY(outputImage, x, y, matching, dim);
             }
         }
@@ -514,6 +490,8 @@ void convertImageFromGraySimple(unsigned char* gray,
     {
         outputImage.writePPM(bmpFname);
     }
+
+    fprintf(stderr, "match time %f\n", matchTime);
 }
 
 void convertImageFromGray2(unsigned char* gray,
@@ -861,4 +839,61 @@ void init()
     generateCosLookup(cosLookup, alphaLookup, 8);
     generateCos1DLookup(cos1DLookup, 8);
     prepareGlyphSignatures();
+
+    glyphPixels = (uint8_t*)malloc(sizeof(uint8_t) * 256 * 64);
+    glyphTotalBrightness = (uint32_t*)malloc(sizeof(uint32_t) * 256);
+    glyphIndexByBrightness = (uint8_t*)malloc(sizeof(uint8_t) * 256);
+    // no inverse
+    int gi = 0;
+
+    int32_t tempBrightness[256];
+    for (int i = 0; i < 128; i++)
+    {
+        tempBrightness[i] = 0;
+        for (int j = 0; j < 64; j++)
+        {
+            glyphPixels[gi] = (glyphs[gi] == '1') ? 255 : 0;
+            tempBrightness[i] += glyphPixels[gi];
+            gi++;
+        }
+
+    }
+
+    // inverse
+    gi = 0;
+    for (int i = 0; i < 128; i++)
+    {
+        tempBrightness[i+128] = 0;
+        for (int j = 0; j < 64; j++)
+        {
+            glyphPixels[gi + (128*64)] = (glyphs[gi] == '1') ? 0 : 255;
+            tempBrightness[i+128] += glyphPixels[gi + (128*64)];
+            gi++;
+        }
+    }
+
+    // inefficient but easy sort
+    for (int i = 0; i < 256; i++)
+    {
+        int32_t highestBrightness = -1;
+        int highestBrightnessIndex = 0;
+        // find highest brightness
+        for (int j = 0; j < 256; j++)
+        {
+            if (tempBrightness[j] > highestBrightness)
+            {
+                highestBrightness = tempBrightness[j];
+                highestBrightnessIndex = j;
+            }
+        }
+
+        glyphTotalBrightness[i] = highestBrightness;
+        glyphIndexByBrightness[i] = highestBrightnessIndex;
+
+        tempBrightness[highestBrightnessIndex] = -9999;
+
+        fprintf(stderr, "%d: glyph brightness %d index %d\n", i, glyphTotalBrightness[i], glyphIndexByBrightness[i]);
+    }
+
+
 }
