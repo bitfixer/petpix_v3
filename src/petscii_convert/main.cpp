@@ -445,40 +445,70 @@ void convertThread(uint8_t* pixels,
                 maxQuadBrightness[i] = quadrantBrightness[i] + quadRange;
             }
 
+            int32_t mean_error = 0;
+            int32_t totalGlyphsToCheck = 0;
+            bool checkQuad[256];
+            int32_t glyphQuadError[256];
+            
             for (int g = 0; g < 256; g++)
             {
                 if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
                 {
-                    // now check quadrant brightness
-                    bool check = true;
+                    checkQuad[g] = true;
+                    totalGlyphsToCheck++;
+                }
+                else
+                {
+                    checkQuad[g] = false;
+                }
+            }
+
+            for (int g = 0; g < 256; g++)
+            {
+                glyphQuadError[g] = 999999999;
+                //if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
+                if (checkQuad[g])
+                {
+                    // check error from quadrant brightness
+                    uint32_t quad_error = 0;
                     int gi = glyphIndexByBrightness[g];
                     for (int q = 0; q < 4; q++)
                     {
-                        if (glyphQuadrantTotalBrightness[gi][q] < minQuadBrightness[q] || glyphQuadrantTotalBrightness[gi][q] > maxQuadBrightness[q])
-                        {
-                            check = false;
-                            break;
-                        }
+                        int e = (int)glyphQuadrantTotalBrightness[gi][q] - quadrantBrightness[q];
+                        quad_error += e*e;
                     }
-                    
-                    if (check)
-                    {
-                        uint8_t* glyph = &glyphPixels[gi * 64];
-                        uint32_t error = 0;
-                        for (int p = 0; p < numpixels; p++)
-                        {
-                            int e = (int)glyph[p] - (int)region[p];
-                            error += e*e;
-                        }
+                    glyphQuadError[g] = quad_error;
+                    mean_error += quad_error / totalGlyphsToCheck;
+                    //totalGlyphsToCheck++;
+                }
+            }
+            //mean_error /= totalGlyphsToCheck;
 
-                        if (error < min_error)
-                        {
-                            min_error = error;
-                            matching = gi;
-                        }
+            int totalChecked = 0;
+            // do full check on remaining glyphs
+            for (int g = 0; g < 256; g++)
+            {
+                if (glyphQuadError[g] <= mean_error/4)
+                {
+                    totalChecked++;
+                    int gi = glyphIndexByBrightness[g];
+                    uint8_t* glyph = &glyphPixels[gi * 64];
+                    uint32_t error = 0;
+                    for (int p = 0; p < numpixels; p++)
+                    {
+                        int e = (int)glyph[p] - (int)region[p];
+                        error += e*e;
+                    }
+
+                    if (error < min_error)
+                    {
+                        min_error = error;
+                        matching = gi;
                     }
                 }
             }
+            //fprintf(stderr, "to check %d total checked %d mean %d\n", totalGlyphsToCheck, totalChecked, mean_error);
+
             results[resultIndex++] = matching;
         }
     }
@@ -520,6 +550,7 @@ void convertImageFromGraySimpleMultithreaded(
     {
         // launch one thread per section
         threads[i] = new std::thread(convertThread, threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange);
+        //convertThread(threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange);
         threadRowPtr += (rowsPerThread*dim) * width;
     }
 
