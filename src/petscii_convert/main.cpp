@@ -16,6 +16,11 @@
 #define USE_1D_DCT 1
 #define NUM_THREADS 25
 
+#define FILTER_BY_BRIGHTNESS 0x01
+#define FILTER_BY_QUAD 0x02
+#define FILTER_BY_SIXTEENTHS 0x04
+#define FILTER_BY_PIXELS 0x08
+
 double **dctInput;
 double *dctOutput;
 
@@ -98,7 +103,10 @@ void convertImageFromGraySimpleMultithreaded(
                                 int quadRange,
                                 int frameNumber,
                                 int numThreads,
-                                int quadMeanDivisor);
+                                int quadMeanDivisor,
+                                uint8_t filterMask,
+                                int quadFilterPct,
+                                int sixteenthFilterPct);
 void writeGlyphToImageAtXY(Image& image,
                            int x,
                            int y,
@@ -127,8 +135,12 @@ int main (int argc, char * const argv[]) {
     bool simple_search = false;
     int numThreads = 1;
     int quadMeanDivisor = 1;
+    int quadFilterPct = 50;
+    int sixteenthFilterPct = 50;
+
+    uint8_t filterMask = FILTER_BY_BRIGHTNESS | FILTER_BY_QUAD | FILTER_BY_SIXTEENTHS;
     
-    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:n:d:")) != -1)
+    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:n:d:m:e:r:t:")) != -1)
     {
         if (c == 'f') // framerate
         {
@@ -185,6 +197,18 @@ int main (int argc, char * const argv[]) {
         {
             quadMeanDivisor = atoi(optarg);
         }
+        else if (c == 'm')
+        {
+            filterMask = atoi(optarg);
+        }
+        else if (c == 'e')
+        {
+            quadFilterPct = atoi(optarg);
+        }
+        else if (c == 'r')
+        {
+            sixteenthFilterPct = atoi(optarg);
+        }
     }
     
     int framesize = (pf == RGB) ? width * height * 3 : width * height;
@@ -203,7 +227,23 @@ int main (int argc, char * const argv[]) {
             if (simple_search)
             {
                 //convertImageFromGraySimple(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber);
-                convertImageFromGraySimpleMultithreaded(frame, width, height, 8, frameTime, stdout, output_image, output_pts, searchRange, quadRange, frameNumber, numThreads, quadMeanDivisor);
+                convertImageFromGraySimpleMultithreaded(
+                    frame, 
+                    width, 
+                    height, 
+                    8, 
+                    frameTime, 
+                    stdout, 
+                    output_image,
+                    output_pts, 
+                    searchRange, 
+                    quadRange, 
+                    frameNumber, 
+                    numThreads, 
+                    quadMeanDivisor, 
+                    filterMask,
+                    quadFilterPct,
+                    sixteenthFilterPct);
             }
             else
             {
@@ -392,13 +432,27 @@ void convertThread(uint8_t* pixels,
                    int dim,
                    int brightnessRange,
                    int quadRange,
-                   int quadMeanDivisor)
+                   int quadMeanDivisor,
+                   uint8_t filterMask,
+                   int quadFilterPct,
+                   int sixteenthFilterPct)
 {
     uint8_t* region = new uint8_t[dim*dim];
     int numpixels = dim*dim;
     int resultIndex = 0;
     uint32_t sixteenthBrightness[16];
     uint32_t quadrantBrightness[4];
+
+    uint8_t checkGlyph[256];
+    uint8_t errorBuckets[163][256];
+    uint8_t numInBucket[163];
+    int maxToCheck = 0;
+    int totalChecked = 0;
+
+    bool filterByBrightness = (filterMask & FILTER_BY_BRIGHTNESS) > 0 ? true : false;
+    bool filterByQuadBrightness = (filterMask & FILTER_BY_QUAD) > 0 ? true : false;
+    bool filterbySixteenths = (filterMask & FILTER_BY_SIXTEENTHS) > 0 ? true : false;
+
     for (int y = 0; y < height; y += dim)
     {
         for (int x = 0; x < width; x += dim)
@@ -410,7 +464,6 @@ void convertThread(uint8_t* pixels,
                 for (int xx = 0; xx < dim; xx++)
                 {
                     region[index] = pixels[(y+yy)*width + (x+xx)];
-                    //totalBrightness += region[index];
                     index++;
                 }
             }
@@ -440,29 +493,6 @@ void convertThread(uint8_t* pixels,
             quadrantBrightness[2] = sixteenthBrightness[8] + sixteenthBrightness[9] + sixteenthBrightness[12] + sixteenthBrightness[13];
             quadrantBrightness[3] = sixteenthBrightness[10] + sixteenthBrightness[11] + sixteenthBrightness[14] + sixteenthBrightness[15];
 
-            /*
-            // get quadrant brightness
-            int quadrant = 0;
-            index = 0;
-            for (int qy = 0; qy < 2; qy++)
-            {
-                for (int qx = 0; qx < 2; qx++)
-                {
-                    quadrantBrightness[quadrant] = 0;
-                    for (int yy = 0; yy < dim/2; yy++)
-                    {
-                        for (int xx = 0; xx < dim/2; xx++)
-                        {
-                            int ii = index + (qx*4) + (yy*8) + xx;
-                            quadrantBrightness[quadrant] += region[ii];
-                        }
-                    }
-                    quadrant++;
-                }
-                index += 4*8;
-            }
-            */
-
             totalBrightness = quadrantBrightness[0] + quadrantBrightness[1] + quadrantBrightness[2] + quadrantBrightness[3];
 
             uint32_t min_error = 999999999;
@@ -471,107 +501,116 @@ void convertThread(uint8_t* pixels,
             uint32_t minBrightness = (totalBrightness >= brightnessRange) ? totalBrightness-brightnessRange : 0;
             uint32_t maxBrightness = totalBrightness + brightnessRange;
 
-            int32_t mean_error = 0;
-            int32_t totalGlyphsToCheck = 0;
-            int32_t totalGlyphsSecondStage = 0;
-            bool checkGlyph[256];
-            int32_t glyphQuadError[256];
-            int32_t glyphSixteenthError[256];
-            uint8_t errorBuckets[163][256];
-            uint8_t numInBucket[163];
+            //int32_t mean_error = 0;
+            int32_t totalGlyphsToCheck = 256;
+            int32_t totalGlyphsSecondStage = 256;
 
+            // clear buckets
             memset(numInBucket, 0, 163);
+            memset(checkGlyph, 1, 256);
             
-            // filter only glyphs close enough to total brightness of this region
-            for (int g = 0; g < 256; g++)
+            if (filterByBrightness)
             {
-                checkGlyph[g] = false;
-                if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
+                // filter only glyphs close enough to total brightness of this region
+                totalGlyphsToCheck = 0;
+                for (int g = 0; g < 256; g++)
                 {
-                    checkGlyph[g] = true;
-                    totalGlyphsToCheck++;
-                }
-            }
-
-            // get quad brightness error
-            for (int g = 0; g < 256; g++)
-            {
-                if (checkGlyph[g])
-                {
-                    // check error from quadrant brightness
-                    uint32_t quad_error = 0;
-                    for (int q = 0; q < 4; q++)
+                    if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
                     {
-                        int e = (int)glyphQuadrantTotalBrightness[g][q] - quadrantBrightness[q];
-                        quad_error += e >= 0 ? e : -e;
+                        checkGlyph[g] = 1;
+                        totalGlyphsToCheck++;
                     }
-                    int bindex = quad_error / 100;
-                    errorBuckets[bindex][numInBucket[bindex]] = g;
-                    numInBucket[bindex]++;
-                }
-                checkGlyph[g] = false;
-            }
-
-            totalGlyphsSecondStage = 0;
-            int maxToCheck = totalGlyphsToCheck / 2;
-            if (maxToCheck < 10)
-            {
-                maxToCheck = 10;
-            }
-            for (int b = 0; b < 163; b++)
-            {
-                for (int gi = 0; gi < numInBucket[b]; gi++)
-                {
-                    checkGlyph[errorBuckets[b][gi]] = true;
-                    totalGlyphsSecondStage++;
-                    if (totalGlyphsSecondStage >= maxToCheck)
+                    else
                     {
-                        b = 512;
-                        break;
+                        checkGlyph[g] = 0;
                     }
                 }
             }
 
-            memset(numInBucket, 0, 163);
+            if (filterByQuadBrightness)
+            {
+                // get quad brightness error
+                for (int g = 0; g < 256; g++)
+                {
+                    if (checkGlyph[g])
+                    {
+                        // check error from quadrant brightness
+                        uint32_t quad_error = 0;
+                        for (int q = 0; q < 4; q++)
+                        {
+                            int e = (int)glyphQuadrantTotalBrightness[g][q] - quadrantBrightness[q];
+                            quad_error += e >= 0 ? e : -e;
+                        }
+                        int bindex = quad_error / 100;
+                        errorBuckets[bindex][numInBucket[bindex]] = g;
+                        numInBucket[bindex]++;
+                    }
+                    checkGlyph[g] = false;
+                }
+
+                totalGlyphsSecondStage = 0;
+                //int maxToCheck = totalGlyphsToCheck / 2;
+                //maxToCheck = 30;
+                maxToCheck = totalGlyphsToCheck * quadFilterPct / 100;
+                if (maxToCheck < 10)
+                {
+                    maxToCheck = 10;
+                }
+                for (int b = 0; b < 163; b++)
+                {
+                    for (int gi = 0; gi < numInBucket[b]; gi++)
+                    {
+                        checkGlyph[errorBuckets[b][gi]] = true;
+                        totalGlyphsSecondStage++;
+                        if (totalGlyphsSecondStage >= maxToCheck)
+                        {
+                            b = 163;
+                            break;
+                        }
+                    }
+                }
+
+                memset(numInBucket, 0, 163);
+            }
+
             
-            // second stage
-            mean_error = 0;
-            for (int g = 0; g < 256; g++)
+            if (filterbySixteenths)
             {
-                //glyphSixteenthError[g] = 999999999;
-                if (checkGlyph[g])
+                // second stage
+                for (int g = 0; g < 256; g++)
                 {
-                    uint32_t sError = 0;
-                    for (int i = 0; i < 16; i++)
+                    if (checkGlyph[g])
                     {
-                        int e = (int)glyph16TotalBrightness[g][i] - (int)sixteenthBrightness[i];
-                        sError += e >= 0 ? e : -e;
+                        uint32_t sError = 0;
+                        for (int i = 0; i < 16; i++)
+                        {
+                            int e = (int)glyph16TotalBrightness[g][i] - (int)sixteenthBrightness[i];
+                            sError += e >= 0 ? e : -e;
+                        }
+                        int bindex = sError / 100;
+                        errorBuckets[bindex][numInBucket[bindex]] = g;
+                        numInBucket[bindex]++;
                     }
-                    //glyphSixteenthError[g] = sError;
-                    //mean_error += sError / totalGlyphsSecondStage;
-                    int bindex = sError / 100;
-                    errorBuckets[bindex][numInBucket[bindex]] = g;
-                    numInBucket[bindex]++;
+                    checkGlyph[g] = false;
                 }
-                checkGlyph[g] = false;
-            }
 
-            int totalChecked = 0;
-            maxToCheck = totalGlyphsSecondStage / 2;
-            if (maxToCheck < 10)
-            {
-                maxToCheck = 10;
-            }
-            for (int b = 0; b < 163; b++)
-            {
-                for (int gi = 0; gi < numInBucket[b]; gi++)
+                totalChecked = 0;
+                maxToCheck = totalGlyphsSecondStage * sixteenthFilterPct / 100;
+                if (maxToCheck < 10)
                 {
-                    checkGlyph[errorBuckets[b][gi]] = true;
-                    totalChecked++;
-                    if (totalChecked >= maxToCheck)
+                    maxToCheck = 10;
+                }
+                for (int b = 0; b < 163; b++)
+                {
+                    for (int gi = 0; gi < numInBucket[b]; gi++)
                     {
-                        b = 163;
-                        break;
+                        checkGlyph[errorBuckets[b][gi]] = true;
+                        totalChecked++;
+                        if (totalChecked >= maxToCheck)
+                        {
+                            b = 163;
+                            break;
+                        }
                     }
                 }
             }
@@ -617,7 +656,10 @@ void convertImageFromGraySimpleMultithreaded(
                                 int quadRange,
                                 int frameNumber,
                                 int numThreads,
-                                int quadMeanDivisor)
+                                int quadMeanDivisor,
+                                uint8_t filterMask,
+                                int quadFilterPct,
+                                int sixteenthFilterPct)
 {
     Tools::Timer* timer = Tools::Timer::createTimer();
     Image outputImage(width, height);
@@ -639,7 +681,19 @@ void convertImageFromGraySimpleMultithreaded(
     for (int i = 0; i < numThreads; i++)
     {
         // launch one thread per section
-        threads[i] = new std::thread(convertThread, threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange, quadMeanDivisor);
+        threads[i] = new std::thread(
+            convertThread, 
+            threadRowPtr, 
+            threadResults[i],
+             width, 
+             rowsPerThread*dim, 
+             dim, 
+             searchRange, 
+             quadRange, 
+             quadMeanDivisor,
+             filterMask,
+             quadFilterPct,
+             sixteenthFilterPct);
         //convertThread(threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange);
         threadRowPtr += (rowsPerThread*dim) * width;
     }
@@ -1337,31 +1391,6 @@ void init()
             }
         }
     }
-
-    /*
-    // inefficient but easy sort
-    for (int i = 0; i < 256; i++)
-    {
-        int32_t highestBrightness = -1;
-        int highestBrightnessIndex = 0;
-        // find highest brightness
-        for (int j = 0; j < 256; j++)
-        {
-            if (tempBrightness[j] > highestBrightness)
-            {
-                highestBrightness = tempBrightness[j];
-                highestBrightnessIndex = j;
-            }
-        }
-
-        glyphTotalBrightness[i] = highestBrightness;
-        glyphIndexByBrightness[i] = highestBrightnessIndex;
-
-        tempBrightness[highestBrightnessIndex] = -9999;
-
-        fprintf(stderr, "%d: glyph brightness %d index %d\n", i, glyphTotalBrightness[i], glyphIndexByBrightness[i]);
-    }
-    */
 
     for (int i = 0; i < 256; i++)
     {
