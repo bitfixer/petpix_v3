@@ -10,7 +10,6 @@
 #include "Ditherer.hpp"
 
 #include <array>
-#include <vector>
 #include <algorithm>
 #include <thread>
 
@@ -386,12 +385,6 @@ void convertImageFromGray(unsigned char* gray,
     fwrite(outputGlyphs, 1 ,numglyphs, fp_out);
 }
 
-typedef std::pair<int, int> ppair;
-bool comparator (const ppair& l, const ppair& r)
-{
-    return l.first < r.first;
-}
-
 void convertThread(uint8_t* pixels,
                    uint8_t* results,
                    int width,
@@ -511,7 +504,6 @@ void convertThread(uint8_t* pixels,
                 }
             }
 
-            std::vector<ppair> quadErrorV;
             // get quad brightness error
             for (int g = 0; g < 256; g++)
             {
@@ -528,22 +520,10 @@ void convertThread(uint8_t* pixels,
                     }
                     glyphQuadError[g] = quad_error;
                     mean_error += quad_error / totalGlyphsToCheck;
-                    quadErrorV.push_back(ppair(quad_error, g));
                 }
             }
 
-            std::sort(quadErrorV.begin(), quadErrorV.end());
-            /*
-            for (std::vector<ppair>::iterator it=quadErrorV.begin(); it!=quadErrorV.end(); ++it) {
-                //std::cout << ' ' << *it;
-                fprintf(stderr, "** %d %d\n", it->first, it->second);
-            }
-            */
-
-            //fprintf(stderr, "----\n");
             int totalChecked = 0;
-
-            /*
             // only include glyphs with low error
             for (int g = 0; g < 256; g++)
             {
@@ -553,35 +533,32 @@ void convertThread(uint8_t* pixels,
                     checkGlyph[g] = true; // check sixteenths
                     totalGlyphsSecondStage++;
                 }
-            }
-            */
 
-            int remCheck = totalGlyphsToCheck/2;
-            for (std::vector<ppair>::iterator it=quadErrorV.begin(); it!=quadErrorV.end(); ++it)
-            {
-                int g = it->second;
-                uint8_t* glyph = &glyphPixels[g * 64];
-                uint32_t error = 0;
-                for (int p = 0; p < numpixels; p++)
+                /*
+                if (glyphQuadError[g] <= mean_error/quadMeanDivisor)
                 {
-                    int e = (int)glyph[p] - (int)region[p];
-                    error += e*e;
-                }
+                    totalChecked++;
+                    //int gi = glyphIndexByBrightness[g];
+                    int gi = g;
+                    uint8_t* glyph = &glyphPixels[gi * 64];
+                    uint32_t error = 0;
+                    for (int p = 0; p < numpixels; p++)
+                    {
+                        int e = (int)glyph[p] - (int)region[p];
+                        error += e*e;
+                    }
 
-                if (error < min_error)
-                {
-                    min_error = error;
-                    matching = g;
-                }
+                    if (error < min_error)
+                    {
+                        min_error = error;
+                        matching = gi;
+                    }
 
-                remCheck--;
-                if (remCheck == 0)
-                {
-                    break;
                 }
+                */
+                
             }
 
-            /*
             // second stage
             mean_error = 0;
             for (int g = 0; g < 256; g++)
@@ -599,9 +576,30 @@ void convertThread(uint8_t* pixels,
                     mean_error += sError / totalGlyphsSecondStage;
                 }
             }
-            */
 
             /*
+            for (int g = 0; g < 256; g++)
+            {
+                if (checkGlyph[g])
+                {
+                    uint32_t sError = 0;
+                    for (int i = 0; i < 16; i++)
+                    {
+                        int e = (int)glyph16TotalBrightness[g][i] - (int)sixteenthBrightness[i];
+                        sError += e*e;
+                    }
+                    //glyphSixteenthError[g] = sError;
+                    //mean_error += sError / totalGlyphsSecondStage;
+
+                    if (sError < min_error)
+                    {
+                        min_error = sError;
+                        matching = g;
+                    }
+                }
+            }
+            */
+
             for (int g = 0; g < 256; g++)
             {
                 checkGlyph[g] = false;
@@ -631,7 +629,6 @@ void convertThread(uint8_t* pixels,
                     }
                 }
             }
-            */
 
             //fprintf(stderr, "check1 %d check2 %d total checked %d\n", totalGlyphsToCheck, totalGlyphsSecondStage, totalChecked);
 
