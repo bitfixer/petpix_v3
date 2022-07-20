@@ -87,6 +87,7 @@ int main(int argc, char** argv)
         int testindex = 0;
         float time;
         fread(&time, 1, sizeof(time), fp);
+        //printf("time %f\n", time);
         fread(test, 1, 1000, fp);
         page++;
         pagesInSecond++;

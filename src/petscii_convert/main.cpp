@@ -48,6 +48,7 @@ uint32_t** glyph16TotalBrightness;
 
 //uint8_t* glyphIndexByBrightness;
 uint8_t* glyphResults;
+uint8_t* includedChars;
 
 void init();
 void convertImage(char *filename, int dim, float time = 0.0);
@@ -106,7 +107,8 @@ void convertImageFromGraySimpleMultithreaded(
                                 int quadMeanDivisor,
                                 uint8_t filterMask,
                                 int quadFilterPct,
-                                int sixteenthFilterPct);
+                                int sixteenthFilterPct,
+                                bool excludeLetters);
 void writeGlyphToImageAtXY(Image& image,
                            int x,
                            int y,
@@ -137,10 +139,11 @@ int main (int argc, char * const argv[]) {
     int quadMeanDivisor = 1;
     int quadFilterPct = 50;
     int sixteenthFilterPct = 50;
+    bool excludeLetters = false;
 
     uint8_t filterMask = FILTER_BY_BRIGHTNESS | FILTER_BY_QUAD | FILTER_BY_SIXTEENTHS;
     
-    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:n:d:m:e:r:t:")) != -1)
+    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:n:d:m:e:r:t:x")) != -1)
     {
         if (c == 'f') // framerate
         {
@@ -209,6 +212,10 @@ int main (int argc, char * const argv[]) {
         {
             sixteenthFilterPct = atoi(optarg);
         }
+        else if (c == 'x')
+        {
+            excludeLetters = true;
+        }
     }
     
     int framesize = (pf == RGB) ? width * height * 3 : width * height;
@@ -243,7 +250,8 @@ int main (int argc, char * const argv[]) {
                     quadMeanDivisor, 
                     filterMask,
                     quadFilterPct,
-                    sixteenthFilterPct);
+                    sixteenthFilterPct,
+                    excludeLetters);
             }
             else
             {
@@ -435,7 +443,8 @@ void convertThread(uint8_t* pixels,
                    int quadMeanDivisor,
                    uint8_t filterMask,
                    int quadFilterPct,
-                   int sixteenthFilterPct)
+                   int sixteenthFilterPct,
+                   bool excludeLetters)
 {
     uint8_t* region = new uint8_t[dim*dim];
     int numpixels = dim*dim;
@@ -508,6 +517,11 @@ void convertThread(uint8_t* pixels,
             // clear buckets
             memset(numInBucket, 0, 163);
             memset(checkGlyph, 1, 256);
+
+            if (excludeLetters)
+            {
+                memcpy(checkGlyph, includedChars, 256);
+            }
             
             if (filterByBrightness)
             {
@@ -515,14 +529,17 @@ void convertThread(uint8_t* pixels,
                 totalGlyphsToCheck = 0;
                 for (int g = 0; g < 256; g++)
                 {
-                    if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
+                    if (checkGlyph[g]) 
                     {
-                        checkGlyph[g] = 1;
-                        totalGlyphsToCheck++;
-                    }
-                    else
-                    {
-                        checkGlyph[g] = 0;
+                        if (glyphTotalBrightness[g] >= minBrightness && glyphTotalBrightness[g] <= maxBrightness)
+                        {
+                            //checkGlyph[g] = 1;
+                            totalGlyphsToCheck++;
+                        }
+                        else
+                        {
+                            checkGlyph[g] = 0;
+                        }
                     }
                 }
             }
@@ -545,16 +562,16 @@ void convertThread(uint8_t* pixels,
                         errorBuckets[bindex][numInBucket[bindex]] = g;
                         numInBucket[bindex]++;
                     }
-                    checkGlyph[g] = false;
+                    checkGlyph[g] = 0;
                 }
 
                 totalGlyphsSecondStage = 0;
                 //int maxToCheck = totalGlyphsToCheck / 2;
                 //maxToCheck = 30;
                 maxToCheck = totalGlyphsToCheck * quadFilterPct / 100;
-                if (maxToCheck < 10)
+                if (maxToCheck < 1)
                 {
-                    maxToCheck = 10;
+                    maxToCheck = 1;
                 }
                 for (int b = 0; b < 163; b++)
                 {
@@ -591,14 +608,14 @@ void convertThread(uint8_t* pixels,
                         errorBuckets[bindex][numInBucket[bindex]] = g;
                         numInBucket[bindex]++;
                     }
-                    checkGlyph[g] = false;
+                    checkGlyph[g] = 0;
                 }
 
                 totalChecked = 0;
                 maxToCheck = totalGlyphsSecondStage * sixteenthFilterPct / 100;
-                if (maxToCheck < 10)
+                if (maxToCheck < 1)
                 {
-                    maxToCheck = 10;
+                    maxToCheck = 1;
                 }
                 for (int b = 0; b < 163; b++)
                 {
@@ -635,9 +652,11 @@ void convertThread(uint8_t* pixels,
                 }
             }
 
-            //fprintf(stderr, "check1 %d check2 %d total checked %d\n", totalGlyphsToCheck, totalGlyphsSecondStage, totalChecked);
+            //fprintf(stderr, "check1 %d check2 %d total checked %d matched %d\n", totalGlyphsToCheck, totalGlyphsSecondStage, totalChecked, matching);
 
             results[resultIndex++] = matching;
+            //results[resultIndex] = resultIndex;
+            //resultIndex++;
         }
     }
     delete(region);
@@ -659,7 +678,8 @@ void convertImageFromGraySimpleMultithreaded(
                                 int quadMeanDivisor,
                                 uint8_t filterMask,
                                 int quadFilterPct,
-                                int sixteenthFilterPct)
+                                int sixteenthFilterPct,
+                                bool excludeLetters)
 {
     Tools::Timer* timer = Tools::Timer::createTimer();
     Image outputImage(width, height);
@@ -699,7 +719,8 @@ void convertImageFromGraySimpleMultithreaded(
              quadMeanDivisor,
              filterMask,
              quadFilterPct,
-             sixteenthFilterPct);
+             sixteenthFilterPct,
+             excludeLetters);
         //convertThread(threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange);
         threadRowPtr += (rowsPerThread*dim) * width;
         threadResults += charactersPerThread;
@@ -1405,4 +1426,17 @@ void init()
     }
 
     glyphResults = (uint8_t*)malloc(sizeof(uint8_t) * 2000);
+
+    includedChars = (uint8_t*)malloc(sizeof(uint8_t) * 256);
+
+    memset(includedChars, 1, 256);
+    memset(includedChars, 0, 64);
+    includedChars[65] = 0;
+    includedChars[81] = 0;
+    includedChars[83] = 0;
+    includedChars[88] = 0;
+    includedChars[90] = 0;
+    includedChars[94] = 0;
+
+    memcpy(includedChars+128, includedChars, 128);
 }
