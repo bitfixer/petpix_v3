@@ -47,7 +47,7 @@ uint32_t** glyphQuadrantTotalBrightness;
 uint32_t** glyph16TotalBrightness;
 
 //uint8_t* glyphIndexByBrightness;
-
+uint8_t* glyphResults;
 
 void init();
 void convertImage(char *filename, int dim, float time = 0.0);
@@ -664,18 +664,24 @@ void convertImageFromGraySimpleMultithreaded(
     Tools::Timer* timer = Tools::Timer::createTimer();
     Image outputImage(width, height);
     int rows = height / dim;
+    int cols = width / dim;
     int rowsPerThread = rows / numThreads; // make sure this is divisible evenly
     int charactersPerRow = width / dim;
     int charactersPerThread = rowsPerThread * charactersPerRow;
+    int numCharacters = rows*cols;
 
+    /*
     uint8_t** threadResults = (uint8_t**)malloc(sizeof(uint8_t*) * numThreads);
     for (int i = 0; i < numThreads; i++)
     {
         threadResults[i] = (uint8_t*)malloc(sizeof(uint8_t) * charactersPerThread);
     }
+    */
 
     uint8_t* threadRowPtr = gray;
     std::thread** threads = (std::thread**)malloc(sizeof(std::thread*) * numThreads);
+
+    uint8_t* threadResults = glyphResults;
 
     timer->start();
     for (int i = 0; i < numThreads; i++)
@@ -684,7 +690,7 @@ void convertImageFromGraySimpleMultithreaded(
         threads[i] = new std::thread(
             convertThread, 
             threadRowPtr, 
-            threadResults[i],
+            threadResults,
              width, 
              rowsPerThread*dim, 
              dim, 
@@ -696,6 +702,7 @@ void convertImageFromGraySimpleMultithreaded(
              sixteenthFilterPct);
         //convertThread(threadRowPtr, threadResults[i], width, rowsPerThread*dim, dim, searchRange, quadRange);
         threadRowPtr += (rowsPerThread*dim) * width;
+        threadResults += charactersPerThread;
     }
 
     for (int i = 0; i < numThreads; i++)
@@ -708,31 +715,31 @@ void convertImageFromGraySimpleMultithreaded(
     if (output_image)
     {
         int y = 0;
-        for (int i = 0; i < numThreads; i++)
+        int x = 0;
+        for (int c = 0; c < numCharacters; c++)
         {
-            int resultIndex = 0;
-            for (int r = 0; r < rowsPerThread; r++)
+            writeGlyphToImageAtXY(outputImage, x, y, glyphResults[c], dim);
+            x += dim;
+            if (x >= width)
             {
-                for (int c = 0; c < charactersPerRow; c++)
-                {
-                    int x = c * dim;
-                    writeGlyphToImageAtXY(outputImage, x, y, threadResults[i][resultIndex++], dim);
-                }
+                x = 0;
                 y += dim;
             }
         }
+
         char fname[100];
         sprintf(fname, "image_%04d.ppm", frameNumber);
         outputImage.writePPM(fname);
     }
 
-    free(threads);
-    for (int i = 0; i < numThreads; i++)
+    if (output_pts)
     {
-        free(threadResults[i]);
+        fwrite(&time, sizeof(time), 1, fp_out);
     }
-    free(threadResults);
 
+    fwrite(glyphResults, 1, numCharacters, fp_out);
+
+    free(threads);
     fprintf(stderr, "elapsed: %f\n", elapsed);
 }
 
@@ -1397,5 +1404,5 @@ void init()
         glyphTotalBrightness[i] = tempBrightness[i];
     }
 
-
+    glyphResults = (uint8_t*)malloc(sizeof(uint8_t) * 2000);
 }

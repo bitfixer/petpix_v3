@@ -85,18 +85,8 @@ int main(int argc, char** argv)
     while (1) 
     {
         int testindex = 0;
-        /*
-        for (int r = 0; r < 25; r++)
-        {
-            for (int c = 0; c < 40; c++)
-            {
-                test[testindex++] = r + page;
-            }
-        }
-        */
         float time;
         fread(&time, 1, sizeof(time), fp);
-
         fread(test, 1, 1000, fp);
         page++;
         pagesInSecond++;
