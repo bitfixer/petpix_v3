@@ -471,27 +471,16 @@ void convertThread(uint8_t* pixels,
             uint32_t minBrightness = (totalBrightness >= brightnessRange) ? totalBrightness-brightnessRange : 0;
             uint32_t maxBrightness = totalBrightness + brightnessRange;
 
-            /*
-            uint32_t minQuadBrightness[4];
-            uint32_t maxQuadBrightness[4];
-            for (int i = 0; i < 4; i++)
-            {
-                if (quadrantBrightness[i] >= quadRange) {
-                    minQuadBrightness[i] = quadrantBrightness[i] - quadRange;
-                } else {
-                    minQuadBrightness[i] = 0;
-                }
-
-                maxQuadBrightness[i] = quadrantBrightness[i] + quadRange;
-            }
-            */
-
             int32_t mean_error = 0;
             int32_t totalGlyphsToCheck = 0;
             int32_t totalGlyphsSecondStage = 0;
             bool checkGlyph[256];
             int32_t glyphQuadError[256];
             int32_t glyphSixteenthError[256];
+            uint8_t errorBuckets[163][256];
+            uint8_t numInBucket[163];
+
+            memset(numInBucket, 0, 163);
             
             // filter only glyphs close enough to total brightness of this region
             for (int g = 0; g < 256; g++)
@@ -507,106 +496,83 @@ void convertThread(uint8_t* pixels,
             // get quad brightness error
             for (int g = 0; g < 256; g++)
             {
-                glyphQuadError[g] = 999999999;
                 if (checkGlyph[g])
                 {
                     // check error from quadrant brightness
                     uint32_t quad_error = 0;
-                    //int gi = glyphIndexByBrightness[g];
                     for (int q = 0; q < 4; q++)
                     {
                         int e = (int)glyphQuadrantTotalBrightness[g][q] - quadrantBrightness[q];
-                        quad_error += e*e;
+                        quad_error += e >= 0 ? e : -e;
                     }
-                    glyphQuadError[g] = quad_error;
-                    mean_error += quad_error / totalGlyphsToCheck;
+                    int bindex = quad_error / 100;
+                    errorBuckets[bindex][numInBucket[bindex]] = g;
+                    numInBucket[bindex]++;
                 }
-            }
-
-            int totalChecked = 0;
-            // only include glyphs with low error
-            for (int g = 0; g < 256; g++)
-            {
                 checkGlyph[g] = false;
-                if (glyphQuadError[g] <= mean_error/quadMeanDivisor)
-                {
-                    checkGlyph[g] = true; // check sixteenths
-                    totalGlyphsSecondStage++;
-                }
-
-                /*
-                if (glyphQuadError[g] <= mean_error/quadMeanDivisor)
-                {
-                    totalChecked++;
-                    //int gi = glyphIndexByBrightness[g];
-                    int gi = g;
-                    uint8_t* glyph = &glyphPixels[gi * 64];
-                    uint32_t error = 0;
-                    for (int p = 0; p < numpixels; p++)
-                    {
-                        int e = (int)glyph[p] - (int)region[p];
-                        error += e*e;
-                    }
-
-                    if (error < min_error)
-                    {
-                        min_error = error;
-                        matching = gi;
-                    }
-
-                }
-                */
-                
             }
 
+            totalGlyphsSecondStage = 0;
+            int maxToCheck = totalGlyphsToCheck / 2;
+            if (maxToCheck < 10)
+            {
+                maxToCheck = 10;
+            }
+            for (int b = 0; b < 163; b++)
+            {
+                for (int gi = 0; gi < numInBucket[b]; gi++)
+                {
+                    checkGlyph[errorBuckets[b][gi]] = true;
+                    totalGlyphsSecondStage++;
+                    if (totalGlyphsSecondStage >= maxToCheck)
+                    {
+                        b = 512;
+                        break;
+                    }
+                }
+            }
+
+            memset(numInBucket, 0, 163);
+            
             // second stage
             mean_error = 0;
             for (int g = 0; g < 256; g++)
             {
-                glyphSixteenthError[g] = 999999999;
+                //glyphSixteenthError[g] = 999999999;
                 if (checkGlyph[g])
                 {
                     uint32_t sError = 0;
                     for (int i = 0; i < 16; i++)
                     {
                         int e = (int)glyph16TotalBrightness[g][i] - (int)sixteenthBrightness[i];
-                        sError += e*e;
-                    }
-                    glyphSixteenthError[g] = sError;
-                    mean_error += sError / totalGlyphsSecondStage;
-                }
-            }
-
-            /*
-            for (int g = 0; g < 256; g++)
-            {
-                if (checkGlyph[g])
-                {
-                    uint32_t sError = 0;
-                    for (int i = 0; i < 16; i++)
-                    {
-                        int e = (int)glyph16TotalBrightness[g][i] - (int)sixteenthBrightness[i];
-                        sError += e*e;
+                        sError += e >= 0 ? e : -e;
                     }
                     //glyphSixteenthError[g] = sError;
                     //mean_error += sError / totalGlyphsSecondStage;
-
-                    if (sError < min_error)
-                    {
-                        min_error = sError;
-                        matching = g;
-                    }
+                    int bindex = sError / 100;
+                    errorBuckets[bindex][numInBucket[bindex]] = g;
+                    numInBucket[bindex]++;
                 }
-            }
-            */
-
-            for (int g = 0; g < 256; g++)
-            {
                 checkGlyph[g] = false;
-                if (glyphSixteenthError[g] < mean_error)
+            }
+
+            int totalChecked = 0;
+            maxToCheck = totalGlyphsSecondStage / 2;
+            if (maxToCheck < 10)
+            {
+                maxToCheck = 10;
+            }
+            for (int b = 0; b < 163; b++)
+            {
+                for (int gi = 0; gi < numInBucket[b]; gi++)
                 {
-                    checkGlyph[g] = true;
+                    checkGlyph[errorBuckets[b][gi]] = true;
                     totalChecked++;
+                    if (totalChecked >= maxToCheck)
+                    {
+                        b = 163;
+                        break;
+                    }
                 }
             }
 
