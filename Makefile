@@ -10,3 +10,9 @@ bin/cfast.prg: src/pet_client/petpix_client_fast.c
 
 bin/petscii_convert: src/petscii_convert/main.cpp src/petscii_convert/dct.cpp bf-shared/Image.cpp bf-shared/timer.cpp bf-shared/Ditherer.cpp
 	g++ -o bin/petscii_convert -std=c++11 -Ibf-shared $^ -lpthread
+
+bin/udp_receiver: src/udp_receiver.cpp
+	g++ -o bin/udp_receiver src/udp_receiver.cpp
+
+bin/udp_sender: src/udp_sender.cpp
+	g++ -o bin/udp_sender src/udp_sender.cpp

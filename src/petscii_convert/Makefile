@@ -12,3 +12,6 @@ petscii_convert: main.cpp $(SOURCES)
 
 make_glyph_images: make_glyph_images.cpp $(SOURCES)
 	g++ -o make_glyph_images -std=c++11 $(INCLUDES) $^ -lpthread
+
+glyphs_to_image: glyphs_to_image.cpp $(SOURCES)
+	g++ -o glyphs_to_image -std=c++11 $(INCLUDES) $^ -lpthread

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define TESTONLY 1
 const int dataPins[] = {DATA0, DATA1, DATA2, DATA3, DATA4, DATA5, DATA6, DATA7};
 
 void setDataInput()
@@ -86,9 +87,9 @@ int main(int argc, char** argv)
     {
         int testindex = 0;
         float time;
-        fread(&time, 1, sizeof(time), fp);
-        //printf("time %f\n", time);
+        //fread(&time, 1, sizeof(time), fp);
         fread(test, 1, 1000, fp);
+        //printf("read page\n");
         page++;
         pagesInSecond++;
         int currSecond = millis() / 1000;
@@ -100,6 +101,7 @@ int main(int argc, char** argv)
             outputWaitTime = 0.0;
         }
 
+#ifndef TESTONLY
         for (int i = 0; i < 1000; i += 2)
         {
             double t1 = timer->getTime();
@@ -137,6 +139,7 @@ int main(int argc, char** argv)
             handshakeWaitTime += (t4-t3) + (t8-t7);
             outputWaitTime += (t2-t1) + (t6-t5);
         }
+#endif
     }
 
 }

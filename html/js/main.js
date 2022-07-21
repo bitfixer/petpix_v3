@@ -16,6 +16,26 @@ video.style.height = '1px';
 const testdiv = document.querySelector('#testdiv');
 var captureInterval = setInterval(captureImage, 33);
 var pixRegion = new Uint8Array(glyphDim * glyphDim);
+var pix_arr = new Uint8Array(canvas.width * canvas.height);
+var glyphResult = new Uint8Array(1000);
+var glyphBrightness = new Uint32Array(256);
+//var checkGlyph = new Uint8Array(256);
+
+function getGlyphBrightness() {
+    var g = 0;
+    var gi = 0;
+    var p = 0;
+    for (g = 0; g < 256; g++)
+    {
+        var brightness = 0;
+        gi = g*64;
+        for (p = 0; p < glyphDim*glyphDim; p++)
+        {
+            brightness += glyphs[gi + p];
+        }
+        glyphBrightness[g] = brightness;
+    }
+}
 
 function captureImage() {
     clearInterval(captureInterval);
@@ -30,13 +50,11 @@ function captureImage() {
     var imdata = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
 
     // get grayscale image
-    var pix_arr = new Uint8Array(canvas.width * canvas.height);
     var p = 0;
     var input_index = 0;
     var output_index = 0;
     var numpixels = canvas.width * canvas.height;
-
-    var glyphResult = new Uint8Array(1000);
+    
 
     var y = 0;
     var x = 0;
@@ -54,38 +72,45 @@ function captureImage() {
         {
             pind = (y*canvas.width + x) * 4;
             var regionIndex = 0;
+            var regionBrightness = 0;
             // copy block into pixel region
             for (yy = 0; yy < 8; yy++)
             {
                 for (xx = 0; xx < 8; xx++)
                 {
                     pixRegion[regionIndex] = imdata.data[pind + (yy*canvas.width*4) + xx*4];
+                    regionBrightness += pixRegion[regionIndex];
                     regionIndex++;
                 }
             }
 
             var minError = 999999999;
-            var minErrorIndex = -1;
+            var minErrorIndex = 0;
+            var bRange = 4000;
             // get error against every glyph for match
             for (glyph = 0; glyph < 256; glyph++)
             {
-                gind = glyph*64;
-                regionIndex = 0;
-                glyphError = 0;
-                for (yy = 0; yy < 8; yy++)
+                // remove glyphs with brightness far from region brightness
+                if (glyphBrightness[glyph] >= regionBrightness - bRange && glyphBrightness[glyph] <= regionBrightness + bRange)
                 {
-                    for (xx = 0; xx < 8; xx++)
+                    gind = glyph*64;
+                    regionIndex = 0;
+                    glyphError = 0;
+                    for (yy = 0; yy < 8; yy++)
                     {
-                        perr = glyphs[gind + regionIndex] - pixRegion[regionIndex];
-                        glyphError += perr*perr;
-                        regionIndex++;
+                        for (xx = 0; xx < 8; xx++)
+                        {
+                            perr = glyphs[gind + regionIndex] - pixRegion[regionIndex];
+                            glyphError += perr*perr;
+                            regionIndex++;
+                        }
                     }
-                }
 
-                if (glyphError < minError)
-                {
-                    minError = glyphError;
-                    minErrorIndex = glyph;
+                    if (glyphError < minError)
+                    {
+                        minError = glyphError;
+                        minErrorIndex = glyph;
+                    }
                 }
             }
             glyphResult[glyphResultIndex] = minErrorIndex;
@@ -93,67 +118,12 @@ function captureImage() {
         }
     }
 
-    /*
-    for (p = 0; p < numpixels; p++)
-    {
-      pix_arr[output_index++] = imdata.data[input_index];
-      input_index += 4; // skip rgba
-    }
-    */
-
-    // loop through every 8x8 region in the image
-    // step 1 - direct comparison against glyphs
-    // add result to byte array
-    /*
-    var character = 0;
-    var r = 0;
-    var c = 0;
-    var ii = 0;
-    var gg = 0;
-    for (r = 0; r < 25; r++)
-    {
-        for (c = 0; c < 40; c++)
-        {
-            gind = glyphResult[character]*64;
-            for (yy = 0; yy < 8; yy++)
-            {
-                for (xx = 0; xx < 8; xx++)
-                {
-                    ii = r*320*8 + c*8 + yy*320 + xx;
-                    gg = yy*8 + xx;
-
-                    pix_arr[ii] = glyphs[gind + gg];
-                }
-            }
-            character++;
-            if (character >= 256)
-            {
-                character = 0;
-            }
-        }
-    }
-    */
-
     var xhttp = new XMLHttpRequest();
-    xhttp.open("POST", "http://127.0.0.1:8080/testupload.php", true);
+    xhttp.open("POST", "testupload.php", true);
     xhttp.onload = function() {
-      captureInterval = setInterval(captureImage, 33);
-      //alert("sent");
+      captureInterval = setInterval(captureImage, 0);
     }
-    //xhttp.send(pix_arr);
     xhttp.send(glyphResult);
-
-    /*
-    // send image via post
-    var xhttp = new XMLHttpRequest();
-    xhttp.open("POST", "https://petpix.local:9090", true);
-    xhttp.onload = function() {
-      // enable capture again
-      captureInterval = setInterval(captureImage, 166);
-    }
-    xhttp.send(pix_arr);
-    */
-    //captureInterval = setInterval(captureImage, 0);
 }
 
 const constraints = {
@@ -170,4 +140,5 @@ function handleError(error) {
   console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
 }
 
+getGlyphBrightness();
 navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
