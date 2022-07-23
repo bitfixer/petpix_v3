@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define TESTONLY 1
 const int dataPins[] = {DATA0, DATA1, DATA2, DATA3, DATA4, DATA5, DATA6, DATA7};
@@ -60,12 +61,38 @@ uint8_t inputDataByte()
 
 int main(int argc, char** argv)
 {
+    int c;
+    bool output_image = true;
+    bool read_times = false;
+    int start_delay = 2;
+    int dd = 3;
+
+    while ((c = getopt(argc, argv, "txd:s:")) != -1)
+    {
+        if (c == 'x')
+        {
+            output_image = false;
+        }
+        else if (c == 'd')
+        {
+            dd = atoi(optarg);
+        }
+        else if (c == 't')
+        {
+            read_times = true;
+        }
+        else if (c == 's')
+        {
+            start_delay = atoi(optarg);
+        }
+    }
+
     init();
     setDataOutput();
     uint8_t t = 0;
     outputDataByte(0);
 
-    int dd = atoi(argv[1]);
+    //int dd = atoi(argv[1]);
     Tools::Timer* timer = Tools::Timer::createTimer();
     FILE* fp = stdin;
 
@@ -76,8 +103,8 @@ int main(int argc, char** argv)
     int pagesInSecond = 0;
     int lastsecond = 0;
     digitalWrite(CA1, 1);
-    printf("starting in 5 seconds..\n");
-    delay(5000);
+    printf("starting in %d seconds..\n", start_delay);
+    delay(start_delay * 1000);
     printf("started.\n");
 
     double handshakeWaitTime = 0.0;
@@ -87,9 +114,11 @@ int main(int argc, char** argv)
     {
         int testindex = 0;
         float time;
-        //fread(&time, 1, sizeof(time), fp);
+        if (read_times)
+        {
+            fread(&time, 1, sizeof(time), fp);
+        }
         fread(test, 1, 1000, fp);
-        //printf("read page\n");
         page++;
         pagesInSecond++;
         int currSecond = millis() / 1000;
@@ -101,45 +130,46 @@ int main(int argc, char** argv)
             outputWaitTime = 0.0;
         }
 
-#ifndef TESTONLY
-        for (int i = 0; i < 1000; i += 2)
+        if (output_image)
         {
-            double t1 = timer->getTime();
-            outputDataByte(test[i]);
-            double t2 = timer->getTime();
-            // signal ready
-            digitalWrite(CA1, 0);
-            delayMicroseconds(dd);
-            digitalWrite(CA1, 1);
-            
-            // wait for CB2 low
-            double t3 = timer->getTime();
-            while (digitalRead(CB2) != 0) {
-                //printf("1");
-            };
-            double t4 = timer->getTime();
-            
-            // output data
-            double t5 = timer->getTime();
-            outputDataByte(test[i+1]);
-            double t6 = timer->getTime();
-            // signal ready
-            digitalWrite(CA1, 0);
-            delayMicroseconds(dd);
-            digitalWrite(CA1, 1);
-            //delay(dd);
-            
-            double t7 = timer->getTime();
-            // wait for CB2 high
-            while (digitalRead(CB2) != 1) {
-                //printf("2");
-            };
-            double t8 = timer->getTime();
+            for (int i = 0; i < 1000; i += 2)
+            {
+                double t1 = timer->getTime();
+                outputDataByte(test[i]);
+                double t2 = timer->getTime();
+                // signal ready
+                digitalWrite(CA1, 0);
+                delayMicroseconds(dd);
+                digitalWrite(CA1, 1);
+                
+                // wait for CB2 low
+                double t3 = timer->getTime();
+                while (digitalRead(CB2) != 0) {
+                    //printf("1");
+                };
+                double t4 = timer->getTime();
+                
+                // output data
+                double t5 = timer->getTime();
+                outputDataByte(test[i+1]);
+                double t6 = timer->getTime();
+                // signal ready
+                digitalWrite(CA1, 0);
+                delayMicroseconds(dd);
+                digitalWrite(CA1, 1);
+                //delay(dd);
+                
+                double t7 = timer->getTime();
+                // wait for CB2 high
+                while (digitalRead(CB2) != 1) {
+                    //printf("2");
+                };
+                double t8 = timer->getTime();
 
-            handshakeWaitTime += (t4-t3) + (t8-t7);
-            outputWaitTime += (t2-t1) + (t6-t5);
+                handshakeWaitTime += (t4-t3) + (t8-t7);
+                outputWaitTime += (t2-t1) + (t6-t5);
+            }
         }
-#endif
     }
 
 }
