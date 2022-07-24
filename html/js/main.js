@@ -145,22 +145,22 @@ function captureImage() {
     xhttp.send(glyphResult);
 }
 
-const frontVidConstraints = {
+const rVidConstraints = {
     facingMode: 'environment'
 };
 
-const rearVidConstraints = {
+const fVidConstraints = {
     facingMode: 'self'
 };
 
 const rConstraints = {
   audio: false,
-  video: frontVidConstraints
+  video: rVidConstraints
 };
 
 const fConstraints = {
     audio: false,
-    video: rearVidConstraints
+    video: fVidConstraints
 }
 
 function handleSuccess(stream) {
