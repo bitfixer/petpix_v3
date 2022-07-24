@@ -5,10 +5,19 @@
 const video = document.querySelector('video');
 const canvas = window.canvas = document.querySelector('canvas');
 
+var screenWidth = window.innerWidth;
+var screenHeight = window.innerHeight;
+
 canvas.width = 320;
 canvas.height = 200;
-canvas.style.width = '320px';
-canvas.style.height = '200px';
+
+canvas.style.width = screenWidth + 'px';
+
+var canvasRatio = screenWidth / canvas.width;
+var canvasStyleHeight = canvas.height * canvasRatio;
+
+canvas.style.height = canvasStyleHeight + 'px';
+
 
 video.style.width = '1px';
 video.style.height = '1px';
@@ -38,9 +47,9 @@ function getGlyphBrightness() {
 function captureImage() {
     clearInterval(captureInterval);
 
-    var xScale = 320.0 / video.videoWidth;
+    var xScale = canvas.width / video.videoWidth;
     var scaledy = video.videoHeight * xScale;
-    var scaledYOffset = (scaledy - 200.0) / 2.0;
+    var scaledYOffset = (scaledy - canvas.height) / 2.0;
     var yOffset = scaledYOffset / xScale;
     var outHeight = video.videoHeight - (2 * yOffset);
 
@@ -48,7 +57,7 @@ function captureImage() {
 
     if (facing == "f") 
     {
-        ctx.translate(320,0);
+        ctx.translate(canvas.width,0);
         ctx.scale(-1,1);
     }   
     canvas.getContext('2d').drawImage(video, 0, yOffset, video.videoWidth, outHeight, 0, 0, canvas.width, canvas.height);
