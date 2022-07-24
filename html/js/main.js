@@ -46,10 +46,16 @@ function captureImage() {
 
     var ctx = canvas.getContext('2d');
 
-    ctx.translate(320,0);
-    ctx.scale(-1,1);
+    if (facing == "f") 
+    {
+        ctx.translate(320,0);
+        ctx.scale(-1,1);
+    }   
     canvas.getContext('2d').drawImage(video, 0, yOffset, video.videoWidth, outHeight, 0, 0, canvas.width, canvas.height);
-    ctx.setTransform(1,0,0,1,0,0);
+    if (facing == "f")
+    {
+        ctx.setTransform(1,0,0,1,0,0);
+    }
 
     var imdata = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
 
@@ -140,19 +146,19 @@ function captureImage() {
 }
 
 const frontVidConstraints = {
-    facingMode: 'user'
+    facingMode: 'environment'
 };
 
 const rearVidConstraints = {
-    facingMode: 'environmnent'
+    facingMode: 'self'
 };
 
-const frontConstraints = {
+const rConstraints = {
   audio: false,
   video: frontVidConstraints
 };
 
-const rearConstraints = {
+const fConstraints = {
     audio: false,
     video: rearVidConstraints
 }
@@ -168,4 +174,11 @@ function handleError(error) {
 }
 
 getGlyphBrightness();
-navigator.mediaDevices.getUserMedia(frontConstraints).then(handleSuccess).catch(handleError);
+if (facing == 'r')
+{
+    navigator.mediaDevices.getUserMedia(rConstraints).then(handleSuccess).catch(handleError);
+} 
+else
+{
+    navigator.mediaDevices.getUserMedia(fConstraints).then(handleSuccess).catch(handleError);
+}

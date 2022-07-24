@@ -22,8 +22,28 @@
 </div>
 
 <div id="testdiv"></div>
+<script>
+<?php
+    $facing = 'f';
+    if (isset($_GET["f"])) {
+        $facing = $_GET["f"];
+    }
+
+    $flip = ($facing == "f") ? "r" : "f";
+
+    printf("var facing=\"%s\";\n", $facing);
+    printf("function flipCamera() {\n");
+    printf("document.location.href = \"https://%s?f=%s\";\n", $_SERVER["HTTP_HOST"], $flip);
+?>
+}
+
+</script>
 <script src="js/glyphdata.js"></script>
 <script src="js/main.js" async></script>
+
+<button id="flip" onclick="flipCamera();">flip camera</button>
+</script>
+
 
 </body>
 </html>
