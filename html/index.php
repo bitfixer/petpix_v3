@@ -66,7 +66,6 @@
 
     function handleSlider(c,a,b)
     {
-        //alert(c + " " + a + " " + b);
         var thisValue = sliders[c].value;
 
         var val1 = sliders[a].value;
