@@ -99,11 +99,7 @@ function captureImage() {
                 imageIndex = pind + (yy*canvas.width*4);
                 for (xx = 0; xx < 8; xx++)
                 {
-                    //pixRegion[regionIndex] = imdata.data[pind + (yy*canvas.width*4) + xx*4];
-                    //pixRegion[regionIndex] = imdata.data[imageIndex + (xx*4)];
-
-                    //var b = 0.3 * imdata.data[imageIndex] + 0.59 * imdata.data[imageIndex+1] + 0.11 * imdata.data[imageIndex+2]
-                    var b = (imdata.data[imageIndex] + imdata.data[imageIndex+1] + imdata.data[imageIndex+2]) / 3.0;
+                    var b = rval*imdata.data[imageIndex] + gval*imdata.data[imageIndex+1] + bval*imdata.data[imageIndex+2];
                     imageIndex = imageIndex + 4;
                     pixRegion[regionIndex] = b;
 

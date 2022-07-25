@@ -36,14 +36,74 @@
     printf("document.location.href = \"https://%s?f=%s\";\n", $_SERVER["HTTP_HOST"], $flip);
 ?>
 }
-
 </script>
+<button id="flip" onclick="flipCamera();">flip camera</button>
+
+<div class="slider">
+<input type="range" id="rslider" min="0" max="100" value="33" oninput="handleSlider(0,1,2);">
+<input type="range" id="gslider" min="0" max="100" value="33" oninput="handleSlider(1,0,2);">
+<input type="range" id="bslider" min="0" max="100" value="33" oninput="handleSlider(2,0,1);">
+</div>
+<button onclick="resetColors();">reset colors</button>
+
+
+<script>
+    var sliders = new Array(3);
+    sliders[0] = document.getElementById("rslider");
+    sliders[1] = document.getElementById("gslider");
+    sliders[2] = document.getElementById("bslider");
+
+    var rval = 1/3;
+    var gval = 1/3;
+    var bval = 1/3;
+
+    function setRGBVal()
+    {
+        rval = sliders[0].value / 100;
+        gval = sliders[1].value / 100;
+        bval = sliders[2].value / 100;
+    }
+
+    function handleSlider(c,a,b)
+    {
+        //alert(c + " " + a + " " + b);
+        var thisValue = sliders[c].value;
+
+        var val1 = sliders[a].value;
+        var val2 = sliders[b].value;
+
+        var newV1 = 0;
+        var newV2 = 0;
+        var remainder = 100 - thisValue;
+
+        if (val2 == 0)
+        {
+            newV1 = remainder;
+        }
+        else
+        {
+            var ratio = val1/val2;
+            var newV2 = remainder / (ratio+1);
+            var newV1 = remainder - newV2;
+        }
+
+        sliders[a].value = newV1;
+        sliders[b].value = newV2;
+        setRGBVal();
+    }
+
+    function resetColors()
+    {
+        sliders[0].value = 100/3;
+        sliders[1].value = 100/3;
+        sliders[2].value = 100/3;
+
+        setRGBVal();
+    }
+</script>
+
 <script src="js/glyphdata.js"></script>
 <script src="js/main.js" async></script>
-
-<button id="flip" onclick="flipCamera();">flip camera</button>
-</script>
-
 
 </body>
 </html>
