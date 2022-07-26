@@ -16,3 +16,7 @@ bin/udp_receiver: src/udp_receiver.cpp
 
 bin/udp_sender: src/udp_sender.cpp
 	g++ -o bin/udp_sender src/udp_sender.cpp
+
+PHONY: stream
+stream: bin/petpix
+	nc -l -k 9600 | bin/petpix

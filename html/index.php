@@ -12,10 +12,10 @@
     <link href="//fonts.googleapis.com/css?family=Roboto:300,400,500,700" rel="stylesheet" type="text/css">
     <link rel="stylesheet" href="../../../css/main.css">
 </head>
-<body style="background-color:black;">
+<body style="background-color:black; color:green">
 
 <div id="container">
-    <h1><span>PetPix</span>
+    <h1><span>PETpix</span>
     </h1>
     <canvas></canvas>
     <video playsinline autoplay></video>
@@ -34,17 +34,21 @@
     printf("var facing=\"%s\";\n", $facing);
     printf("function flipCamera() {\n");
     printf("document.location.href = \"https://%s?f=%s\";\n", $_SERVER["HTTP_HOST"], $flip);
+    printf("}\n");
 ?>
-}
 </script>
-<button id="flip" onclick="flipCamera();">flip camera</button>
+<button id="flip" onclick="flipCamera();">flip camera</button><br>
+R<input type="range" id="rslider" min="0" max="100" value="33" oninput="handleSlider(0,1,2);"><br>
+G<input type="range" id="gslider" min="0" max="100" value="33" oninput="handleSlider(1,0,2);"><br>
+B<input type="range" id="bslider" min="0" max="100" value="33" oninput="handleSlider(2,0,1);"><br>
+<button onclick="resetColors();">reset colors</button><br><br>
 
-<div class="slider">
-<input type="range" id="rslider" min="0" max="100" value="33" oninput="handleSlider(0,1,2);">
-<input type="range" id="gslider" min="0" max="100" value="33" oninput="handleSlider(1,0,2);">
-<input type="range" id="bslider" min="0" max="100" value="33" oninput="handleSlider(2,0,1);">
-</div>
-<button onclick="resetColors();">reset colors</button>
+Capture Delay (MS) <input type="range" id="captureDelay" min="0" max="33" value="15" oninput="handleCaptureDelay();"><br>
+<div id="captureDelayVal">15</div><br><br>
+
+<input type="range" id="brightnessRangeSlider" min="0" max="10000" value="4000" oninput="handleBrightnessRangeChange();"><br>
+<div id="brightnessRangeVal">4000</div>
+<button onclick="resetBrightnessRange();">reset brightness range</button>
 
 
 <script>
@@ -53,9 +57,17 @@
     sliders[1] = document.getElementById("gslider");
     sliders[2] = document.getElementById("bslider");
 
+    var captureDelaySlider = document.getElementById("captureDelay");
+    var captureDelayVal = document.getElementById("captureDelayVal");
+
+    var brightnessRangeSlider = document.getElementById("brightnessRangeSlider");
+    var brightnessRangeVal = document.getElementById("brightnessRangeVal");
+
     var rval = 1/3;
     var gval = 1/3;
     var bval = 1/3;
+    var cdelay = 15;
+    var brightnessRange = 4000;
 
     function setRGBVal()
     {
@@ -98,6 +110,25 @@
         sliders[2].value = 100/3;
 
         setRGBVal();
+    }
+
+    function handleCaptureDelay()
+    {
+        cdelay = captureDelay.value;
+        captureDelayVal.innerHTML = cdelay;
+    }
+
+    function resetBrightnessRange()
+    {
+        brightnessRange = 4000;
+        brightnessRangeVal.innerHTML = brightnessRange;
+        brightnessRangeSlider.value = brightnessRange;
+    }
+
+    function handleBrightnessRangeChange()
+    {
+        brightnessRange = brightnessRangeSlider.value;
+        brightnessRangeVal.innerHTML = brightnessRange;
     }
 </script>
 

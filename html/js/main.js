@@ -24,9 +24,12 @@ video.style.height = '1px';
 
 const testdiv = document.querySelector('#testdiv');
 var captureInterval;
+var sendInterval;
 var pixRegion = new Float32Array(glyphDim * glyphDim);
 var glyphResult = new Uint8Array(1000);
 var glyphBrightness = new Float32Array(256);
+var requestInProgress = false;
+var queuedImage = false;
 
 function getGlyphBrightness() {
     var g = 0;
@@ -42,6 +45,25 @@ function getGlyphBrightness() {
         }
         glyphBrightness[g] = brightness;
     }
+}
+
+function sendImageData() {
+    clearInterval(sendInterval);
+    requestInProgress = true;
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("POST", "testupload.php", true);
+    xhttp.onload = function() {
+        requestInProgress = false;
+        if (queuedImage)
+        {
+            // send queued image
+            queuedImage = false;
+            sendInterval = setInterval(sendImageData, 0);
+        }
+    }
+    console.log("sending\n");
+    xhttp.send(glyphResult);
+    captureInterval = setInterval(captureImage, cdelay);
 }
 
 function captureImage() {
@@ -110,12 +132,13 @@ function captureImage() {
 
             var minError = 999999999;
             var minErrorIndex = 0;
-            var bRange = 4000;
+            //var bRange = 4000;
             // get error against every glyph for match
             for (glyph = 0; glyph < 256; glyph++)
             {
                 // remove glyphs with brightness far from region brightness
-                if (glyphBrightness[glyph] >= regionBrightness - bRange && glyphBrightness[glyph] <= regionBrightness + bRange)
+                if (glyphBrightness[glyph] >= regionBrightness - brightnessRange && 
+                    glyphBrightness[glyph] <= regionBrightness + brightnessRange)
                 {
                     gind = glyph*64;
                     regionIndex = 0;
@@ -142,12 +165,15 @@ function captureImage() {
         }
     }
 
-    var xhttp = new XMLHttpRequest();
-    xhttp.open("POST", "testupload.php", true);
-    xhttp.onload = function() {
-      captureInterval = setInterval(captureImage, 0);
+    if (requestInProgress == false)
+    {
+        sendImageData();
     }
-    xhttp.send(glyphResult);
+    else
+    {
+        console.log("waiting\n");
+        queuedImage = true;
+    }
 }
 
 const rVidConstraints = {
