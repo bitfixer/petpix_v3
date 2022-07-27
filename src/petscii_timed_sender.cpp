@@ -24,7 +24,7 @@ int main(int argc, char** argv)
     bool useTime = true;
 
     sprintf(destAddr, "127.0.0.1");
-    sprintf(tempFile, "/mnt/tmp/im.tmp");
+    sprintf(tempFile, "/mnt/tmp/temp.img");
 
     while ((c = getopt(argc, argv, "a:f:p:x")) != -1)
     {

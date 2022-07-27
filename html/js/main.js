@@ -132,7 +132,6 @@ function captureImage() {
 
             var minError = 999999999;
             var minErrorIndex = 0;
-            //var bRange = 4000;
             // get error against every glyph for match
             for (glyph = 0; glyph < 256; glyph++)
             {

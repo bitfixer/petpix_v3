@@ -46,7 +46,7 @@ B<input type="range" id="bslider" min="0" max="100" value="33" oninput="handleSl
 Capture Delay (MS) <input type="range" id="captureDelay" min="0" max="33" value="15" oninput="handleCaptureDelay();"><br>
 <div id="captureDelayVal">15</div><br><br>
 
-<input type="range" id="brightnessRangeSlider" min="0" max="10000" value="4000" oninput="handleBrightnessRangeChange();"><br>
+<input type="range" id="brightnessRangeSlider" min="1000" max="6000" value="4000" oninput="handleBrightnessRangeChange();"><br>
 <div id="brightnessRangeVal">4000</div>
 <button onclick="resetBrightnessRange();">reset brightness range</button>
 
@@ -127,8 +127,8 @@ Capture Delay (MS) <input type="range" id="captureDelay" min="0" max="33" value=
 
     function handleBrightnessRangeChange()
     {
-        brightnessRange = brightnessRangeSlider.value;
-        brightnessRangeVal.innerHTML = brightnessRange;
+        brightnessRange = Number(brightnessRangeSlider.value);
+        brightnessRangeVal.innerHTML = brightnessRangeSlider.value;
     }
 </script>
 
