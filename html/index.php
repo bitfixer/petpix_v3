@@ -32,6 +32,14 @@
     $flip = ($facing == "f") ? "r" : "f";
 
     printf("var facing=\"%s\";\n", $facing);
+
+    $columns = 40;
+    if (isset($_GET["c"])) {
+        $columns = $_GET["c"];
+    }
+
+    printf("var columns=\"%s\";\n", $columns);
+
     printf("function flipCamera() {\n");
     printf("document.location.href = \"https://%s?f=%s\";\n", $_SERVER["HTTP_HOST"], $flip);
     printf("}\n");

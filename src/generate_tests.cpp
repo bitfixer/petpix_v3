@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 //./stream2.sh $1 30 320 200 $2 $3 -z
 //ffmpeg -i $1 -vf scale=$3:$4 -y -r $2 -vcodec rawvideo -pix_fmt gray -f rawvideo pipe:1 2>/dev/null | \
@@ -56,13 +57,50 @@ void generateTest(char* inputPrefix, bool brightnessOnly, bool useDct, int searc
     printf("output mp4: %s\n", outMp4Fname);
 
     char ffmpegCmd[1024];
-    sprintf(ffmpegCmd, "ffmpeg -i image_%%04d.ppm -y -c:v libx264 -pix_fmt yuv420p -r %d %s", fps, outMp4Fname);
+    sprintf(ffmpegCmd, "ffmpeg -r %d -i image_%%04d.ppm -y -c:v libx264 -pix_fmt yuv420p %s 2>/dev/null", fps, outMp4Fname);
     printf("running:\n%s\n", ffmpegCmd);
     system(ffmpegCmd);
 
     char cleanCmd[256];
     sprintf(cleanCmd, "rm *.ppm");
     system(cleanCmd);
+}
+
+int getFps(char* inputPrefix)
+{
+    char ffmpegCmd[1024];
+    sprintf(ffmpegCmd, "ffmpeg -i %s.mp4 2>%s_info.txt", inputPrefix, inputPrefix);
+    system(ffmpegCmd);
+
+    char grepCmd[256];
+    sprintf(grepCmd, "grep \" fps\" %s_info.txt > %s_fps.txt", inputPrefix, inputPrefix);
+    system(grepCmd);
+
+    char info[1024];
+    char infoFname[64];
+    sprintf(infoFname, "%s_fps.txt", inputPrefix);
+    FILE* fp = fopen(infoFname, "rb");
+    fread(info, 1, 1024, fp);
+    fclose(fp);
+
+    char* ff = strstr(info, " fps");
+    char* fpsStart = ff - 1;
+    while (*fpsStart != ' ')
+    {
+        fpsStart--;
+    }
+
+    ff = NULL;
+    float fps = atof(fpsStart);
+
+    // clean up
+    char cleanCmd[256];
+    sprintf(cleanCmd, "rm %s_info.txt", inputPrefix);
+    system(cleanCmd);
+
+    sprintf(cleanCmd, "rm %s_fps.txt", inputPrefix);
+    system(cleanCmd);
+    return (int)fps;
 }
 
 int main(int argc, char** argv)
@@ -76,9 +114,12 @@ int main(int argc, char** argv)
 
     int width = 320;
     int height = 200;
-    int fps = 30;
+    //int fps = 30;
 
     char ffmpegCmd[1024];
+    int fps = getFps(inputPrefix);
+    printf("fps: %d\n", fps);
+
     char dur[10];
     if (duration > 0)
     {
@@ -103,7 +144,6 @@ int main(int argc, char** argv)
     generateTest(inputPrefix, true, false, 3000, width, height, fps);
     generateTest(inputPrefix, false, false, 3000, width, height, fps);
     generateTest(inputPrefix, false, false, 4000, width, height, fps);
-    generateTest(inputPrefix, false, false, 8000, width, height, fps);
     generateTest(inputPrefix, false, false, 17000, width, height, fps);
     generateTest(inputPrefix, false, true, 80, width, height, fps);
     

@@ -8,8 +8,15 @@ const canvas = window.canvas = document.querySelector('canvas');
 var screenWidth = window.innerWidth;
 var screenHeight = window.innerHeight;
 
+var rows = 25;
+var characters = columns*rows;
+var charDim = 8;
+
 canvas.width = 320;
-canvas.height = 200;
+//canvas.height = 200;
+
+//canvas.width = columns * charDim;
+canvas.height = rows * charDim;
 
 canvas.style.width = screenWidth + 'px';
 
@@ -18,7 +25,6 @@ var canvasStyleHeight = canvas.height * canvasRatio;
 
 canvas.style.height = canvasStyleHeight + 'px';
 
-
 video.style.width = '1px';
 video.style.height = '1px';
 
@@ -26,7 +32,7 @@ const testdiv = document.querySelector('#testdiv');
 var captureInterval;
 var sendInterval;
 var pixRegion = new Float32Array(glyphDim * glyphDim);
-var glyphResult = new Uint8Array(1000);
+var glyphResult = new Uint8Array(characters);
 var glyphBrightness = new Float32Array(256);
 var requestInProgress = false;
 var queuedImage = false;
@@ -108,9 +114,19 @@ function captureImage() {
     var glyphError = 0;
     var glyphResultIndex = 0;
     var imageIndex = 0;
+
+    var horizGlyphDim = glyphDim;
+    var horizGlyphScale = 1;
+    var hg;
+    if (columns == 80)
+    {
+        horizGlyphDim = glyphDim / 2;
+        horizGlyphScale = 2;
+    }
+
     for (y = 0; y < canvas.height; y += glyphDim)
     {
-        for (x = 0; x < canvas.width; x += glyphDim)
+        for (x = 0; x < canvas.width; x += horizGlyphDim)
         {
             pind = (y*canvas.width + x) * 4;
             var regionIndex = 0;
@@ -119,14 +135,17 @@ function captureImage() {
             for (yy = 0; yy < 8; yy++)
             {
                 imageIndex = pind + (yy*canvas.width*4);
-                for (xx = 0; xx < 8; xx++)
+                for (xx = 0; xx < horizGlyphDim; xx++)
                 {
                     var b = rval*imdata.data[imageIndex] + gval*imdata.data[imageIndex+1] + bval*imdata.data[imageIndex+2];
                     imageIndex = imageIndex + 4;
-                    pixRegion[regionIndex] = b;
 
-                    regionBrightness += pixRegion[regionIndex];
-                    regionIndex++;
+                    for (hg = 0; hg < horizGlyphScale; hg++)
+                    {
+                        pixRegion[regionIndex] = b;
+                        regionBrightness += pixRegion[regionIndex];
+                        regionIndex++;
+                    }
                 }
             }
 

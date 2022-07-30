@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char** argv)
 {
-    for (int i = 0; i < 1000; i+=2)
+    int size = atoi(argv[1]);
+    for (int i = 0; i < size; i+=2)
     {
         printf("readbyte%d:\n", i);
         printf("    asm(\"lda %%w\", CA1_STATUS);\n");

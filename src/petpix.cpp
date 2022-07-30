@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #define TESTONLY 1
 const int dataPins[] = {DATA0, DATA1, DATA2, DATA3, DATA4, DATA5, DATA6, DATA7};
@@ -66,8 +67,10 @@ int main(int argc, char** argv)
     bool read_times = false;
     int start_delay = 2;
     int dd = 3;
+    int columns = 40;
+    int rows = 25;
 
-    while ((c = getopt(argc, argv, "txd:s:")) != -1)
+    while ((c = getopt(argc, argv, "txd:s:c:")) != -1)
     {
         if (c == 'x')
         {
@@ -85,6 +88,10 @@ int main(int argc, char** argv)
         {
             start_delay = atoi(optarg);
         }
+        else if (c == 'c')
+        {
+            columns = atoi(optarg);
+        }
     }
 
     init();
@@ -96,9 +103,16 @@ int main(int argc, char** argv)
     Tools::Timer* timer = Tools::Timer::createTimer();
     FILE* fp = stdin;
 
-    uint8_t test[1024];
+    //uint8_t test[1024];
+    int charactersInPage = columns * rows;
+    int charactersToSend = charactersInPage;
+    if (charactersToSend == 2000)
+    {
+        charactersToSend = 2048;
+    }
+
+    uint8_t* test = new uint8_t[charactersToSend];
     uint8_t testval = 0;
-    delay(1000);
     int page = 0;
     int pagesInSecond = 0;
     int lastsecond = 0;
@@ -110,6 +124,8 @@ int main(int argc, char** argv)
     double handshakeWaitTime = 0.0;
     double outputWaitTime = 0.0;
 
+    memset(test, 0, charactersToSend);
+
     while (1) 
     {
         int testindex = 0;
@@ -118,7 +134,7 @@ int main(int argc, char** argv)
         {
             fread(&time, 1, sizeof(time), fp);
         }
-        fread(test, 1, 1000, fp);
+        fread(test, 1, charactersInPage, fp);
         page++;
         pagesInSecond++;
         int currSecond = millis() / 1000;
@@ -132,7 +148,7 @@ int main(int argc, char** argv)
 
         if (output_image)
         {
-            for (int i = 0; i < 1000; i += 2)
+            for (int i = 0; i < charactersToSend; i += 2)
             {
                 double t1 = timer->getTime();
                 outputDataByte(test[i]);
