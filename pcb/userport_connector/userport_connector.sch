@@ -192,8 +192,8 @@ Text GLabel 4550 2350 0    50   Input ~ 0
 PB6
 Text GLabel 4550 2450 0    50   Input ~ 0
 PB7
-Text GLabel 3100 4250 2    50   Input ~ 0
-D0
+Text GLabel 3100 4350 2    50   Input ~ 0
+D2
 Text GLabel 3100 4950 2    50   Input ~ 0
 D6
 Text GLabel 3100 5050 2    50   Input ~ 0
