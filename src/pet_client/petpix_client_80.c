@@ -55,7 +55,7 @@ original basic program
 #define VMEM_START_8    0x8700
 
 #define CURR_KEY        0x0097
-#define Q_KEY           64
+#define Q_KEY           81
 
 #define RUN_STOP 3
 
@@ -261,7 +261,7 @@ j8wait1:
     //TEST
         //key = PEEK(CURR_KEY);
     asm("lda %w", CURR_KEY);
-    asm("cmp #$40");
+    asm("cmp #$51");
     asm("beq %g", done);
     asm("jmp %g", jumper1);
 done:
