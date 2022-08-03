@@ -11,9 +11,11 @@ int main(int argc, char** argv)
 {
     Tools::Timer* timer = Tools::Timer::createTimer();
     Tools::Timer* runTimer = Tools::Timer::createTimer();
+    int columns = 40;
+    int rows = 25;
     float lastDisplayTime = -1;
     float time;
-    uint8_t data[1000];
+    uint8_t* data;
     char destAddr[256];
     int port = 9600;
     char tempFile[256];
@@ -26,7 +28,7 @@ int main(int argc, char** argv)
     sprintf(destAddr, "127.0.0.1");
     sprintf(tempFile, "/mnt/tmp/temp.img");
 
-    while ((c = getopt(argc, argv, "a:f:p:x")) != -1)
+    while ((c = getopt(argc, argv, "a:f:p:xc:")) != -1)
     {
         if (c == 'a')
         {
@@ -44,7 +46,14 @@ int main(int argc, char** argv)
         {
             useTime = false;
         }
+        else if (c == 'c')
+        {
+            columns = atoi(optarg);
+        }
     }
+
+    int bytesInFrame = rows * columns;
+    data = new uint8_t[bytesInFrame];
 
     // prepare command string
     sprintf(ncCmdString, "cat %s | nc -N %s %d", tempFile, destAddr, port);
@@ -57,7 +66,7 @@ int main(int argc, char** argv)
             break;
         }
 
-        if (fread(data, 1, 1000, stdin) != 1000)
+        if (fread(data, 1, bytesInFrame, stdin) != bytesInFrame)
         {
             break;
         }
@@ -83,7 +92,7 @@ int main(int argc, char** argv)
 
         // write to file
         FILE* fp = fopen(tempFile, "wb");
-        fwrite(data, 1, 1000, fp);
+        fwrite(data, 1, bytesInFrame, fp);
         fclose(fp);
 
         system(ncCmdString);
