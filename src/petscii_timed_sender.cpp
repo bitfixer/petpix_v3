@@ -59,6 +59,8 @@ int main(int argc, char** argv)
     sprintf(ncCmdString, "cat %s | nc -N %s %d", tempFile, destAddr, port);
     runTimer->start();
 
+    int framesSkipped = 0;
+
     while (1)
     {
         if (fread(&time, sizeof(float), 1, stdin) != 1)
@@ -78,33 +80,50 @@ int main(int argc, char** argv)
             timer->start();
         }
 
+        bool skip = false;
         if (useTime)
         {
             double timeNow = timer->getTime();
-            while (timeNow < time)
+            if (timeNow > time + 1.0/30.0)
             {
-                // sleep while frame is still early
-                usleep(100);
-                timeNow = timer->getTime();
+                // skip frame
+                skip = true;
+            }
+            else
+            {
+                while (timeNow < time)
+                {
+                    // sleep while frame is still early
+                    usleep(100);
+                    timeNow = timer->getTime();
+                }
             }
         }
         lastDisplayTime = (double)time;
 
-        // write to file
-        FILE* fp = fopen(tempFile, "wb");
-        fwrite(data, 1, bytesInFrame, fp);
-        fclose(fp);
-
-        system(ncCmdString);
-        framesPerSecond++;
-
-        // display fps once per second
-        double runTime = runTimer->getTime();
-        if ((int)runTime > lastSecond)
+        if (skip)
         {
-            lastSecond = (int)runTime;
-            printf("%d FPS\n", framesPerSecond);
-            framesPerSecond = 0;
+            framesSkipped++;
+        }
+        else
+        {
+            // write to file
+            FILE* fp = fopen(tempFile, "wb");
+            fwrite(data, 1, bytesInFrame, fp);
+            fclose(fp);
+
+            system(ncCmdString);
+            framesPerSecond++;
+
+            // display fps once per second
+            double runTime = runTimer->getTime();
+            if ((int)runTime > lastSecond)
+            {
+                lastSecond = (int)runTime;
+                printf("%d FPS %d frames skipped\n", framesPerSecond, framesSkipped);
+                framesPerSecond = 0;
+                framesSkipped = 0;
+            }
         }
     }
 }

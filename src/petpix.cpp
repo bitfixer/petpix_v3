@@ -146,6 +146,12 @@ int main(int argc, char** argv)
             outputWaitTime = 0.0;
         }
 
+        if (digitalRead(CB2) == 0)
+        {
+            //printf("pet is off, skip frame\n");
+            continue;
+        }
+
         if (output_image)
         {
             for (int i = 0; i < charactersToSend; i += 2)
@@ -160,9 +166,22 @@ int main(int argc, char** argv)
                 
                 // wait for CB2 low
                 double t3 = timer->getTime();
-                while (digitalRead(CB2) != 0) {
+
+                bool exit = false;
+                while (digitalRead(CB2) != 0 && !exit) 
+                {
                     //printf("1");
-                };
+                    if (timer->getTime() - t3 > (1.0/100.0))
+                    {
+                        // PET is off
+                        exit = true;
+                    }
+                }
+
+                if (exit)
+                {
+                    break;
+                }
                 double t4 = timer->getTime();
                 
                 // output data
@@ -177,9 +196,19 @@ int main(int argc, char** argv)
                 
                 double t7 = timer->getTime();
                 // wait for CB2 high
-                while (digitalRead(CB2) != 1) {
-                    //printf("2");
-                };
+                while (digitalRead(CB2) != 1 && !exit) 
+                {
+                    if (timer->getTime() - t7 > (1.0/100.0))
+                    {
+                        // PET is off
+                        exit = true;
+                    }
+                }
+                
+                if (exit)
+                {
+                    break;
+                }
                 double t8 = timer->getTime();
 
                 handshakeWaitTime += (t4-t3) + (t8-t7);
