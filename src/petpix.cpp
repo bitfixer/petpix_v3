@@ -106,10 +106,6 @@ int main(int argc, char** argv)
     //uint8_t test[1024];
     int charactersInPage = columns * rows;
     int charactersToSend = charactersInPage;
-    if (charactersToSend == 2000)
-    {
-        charactersToSend = 2048;
-    }
 
     uint8_t* test = new uint8_t[charactersToSend];
     uint8_t testval = 0;

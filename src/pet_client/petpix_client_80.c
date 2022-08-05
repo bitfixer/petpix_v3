@@ -52,7 +52,11 @@ original basic program
 #define VMEM_START_5    0x8400
 #define VMEM_START_6    0x8500
 #define VMEM_START_7    0x8600
-#define VMEM_START_8    0x8700
+//#define VMEM_START_8    0x8700
+
+// change last block address so we only send 2000, not 2048 bytes
+// 0x86D0 is 0x8700 - 0x30 (48 bytes)
+#define VMEM_START_8    0x86D0
 
 #define CURR_KEY        0x0097
 #define Q_KEY           81
@@ -235,6 +239,12 @@ j7wait1:
     asm("sta %w,x", VMEM_START_7);
     asm("inx");
     asm("bne %g", jumper7);
+
+lastblock:
+    // prepare offset of 48 for last block
+    // this way we only send 2000, not 2048 bytes
+    asm("ldx #$30");
+
 jumper8:
 j8wait0:
     asm("lda %w", CA1_STATUS);
@@ -255,8 +265,6 @@ j8wait1:
     asm("sta %w,x", VMEM_START_8);
     asm("inx");
     asm("bne %g", jumper8);
-
-
 
     //TEST
         //key = PEEK(CURR_KEY);
