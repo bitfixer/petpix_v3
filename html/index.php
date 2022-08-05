@@ -9,8 +9,6 @@
     <base target="_blank">
 
     <title>PETPix</title>
-    <link href="//fonts.googleapis.com/css?family=Roboto:300,400,500,700" rel="stylesheet" type="text/css">
-    <link rel="stylesheet" href="../../../css/main.css">
 </head>
 <body style="background-color:black; color:green">
 
