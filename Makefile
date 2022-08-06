@@ -23,6 +23,9 @@ bin/udp_sender: src/udp_sender.cpp
 bin/petscii_timed_sender: src/petscii_timed_sender.cpp bf-shared/timer.cpp
 	g++ -o bin/petscii_timed_sender -Ibf-shared $^
 
+bin/convert_one_video: src/convert_one_video.cpp
+	g++ -o bin/convert_one_video $^
+
 PHONY: stream
 stream: bin/petpix
 	nc -l -k 9600 | bin/petpix -d 5
