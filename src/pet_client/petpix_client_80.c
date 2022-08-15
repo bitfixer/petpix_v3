@@ -45,6 +45,10 @@ original basic program
 #define CA1_DATA_LATCH  0xE84B
 #define CA1_STATUS      0xE84D
 #define USERPORT_DATA   0xE841
+
+#define CRA             0xE811
+#define DDRA            0xE810
+
 #define VMEM_START_1    0x8000
 #define VMEM_START_2    0x8100
 #define VMEM_START_3    0x8200
@@ -65,9 +69,28 @@ original basic program
 
 int main (void)
 {
+    unsigned char cradata;
     unsigned char data;
     unsigned char key = 0;
+
+    // read control register a
+    cradata = PEEK(CRA);
+    // clear bit 2, enable changing R/W
+    data = cradata & 0xFB;
+    POKE(CRA, data);
+
+    // make bit 7 an output
+    data = 0x8F;
+    POKE(DDRA, data);
+
+    // restore control register a
+    POKE(CRA, cradata);
     
+    // clear bit 7, disable speaker
+    data = PEEK(DDRA);
+    data = data & 0x7F;
+    POKE(DDRA, data);
+
     // set uppercase-graphics mode
     data = 12;
     POKE(CA1_TRIGGER, data);
