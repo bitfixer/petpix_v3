@@ -26,6 +26,9 @@ bin/petscii_timed_sender: src/petscii_timed_sender.cpp bf-shared/timer.cpp
 bin/convert_one_video: src/convert_one_video.cpp
 	g++ -o bin/convert_one_video $^
 
+bin/interleave: src/interleave.cpp
+	g++ -o bin/interleave $^
+
 PHONY: stream
 stream: bin/petpix
 	nc -l -k 9600 | bin/petpix -d 5

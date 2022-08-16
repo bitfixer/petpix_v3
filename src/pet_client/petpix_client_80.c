@@ -56,7 +56,6 @@ original basic program
 #define VMEM_START_5    0x8400
 #define VMEM_START_6    0x8500
 #define VMEM_START_7    0x8600
-//#define VMEM_START_8    0x8700
 
 // change last block address so we only send 2000, not 2048 bytes
 // 0x86D0 is 0x8700 - 0x30 (48 bytes)
