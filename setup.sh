@@ -18,20 +18,23 @@ cp petpix_v3/setup/dnsmasq.conf /etc/dnsmasq.conf
 rfkill unblock wlan
 cp petpix_v3/setup/hostapd.conf /etc/hostapd/hostapd.conf
 
+mkdir /mnt/tmp
+cp petpix_v3/setup/rc.local /etc/rc.local
+
 # apache
-#apt-get -y install apache2
-#apt-get -y install php
-#openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout private.key -out certificate.crt
-#mv private.key /etc/ssl/private/
-#mv certificate.crt /etc/ssl/certs/
-#a2enmod ssl
-#systemctl restart apache2.service
+apt-get -y install apache2
+apt-get -y install php
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout private.key -out certificate.crt
+mv private.key /etc/ssl/private/
+mv certificate.crt /etc/ssl/certs/
+a2enmod ssl
+systemctl restart apache2.service
 
 #cd petpix_v3/cc65; make; cd ..;
 #make bin/petpix
 #make bin/petscii_timed_sender
-#cp html/*.php /var/www/html/
-#mkdir /var/www/html/js
-#cp html/js/*.js /var/www/html/js/
-#rm /var/www/html/index.html
+cp html/*.php /var/www/html/
+mkdir /var/www/html/js
+cp html/js/*.js /var/www/html/js/
+rm /var/www/html/index.html
 #reboot
