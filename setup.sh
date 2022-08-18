@@ -1,4 +1,5 @@
 apt-get -y update
+apt-get -y upgrade
 apt-get -y install git
 sudo -u pi git clone https://github.com/WiringPi/WiringPi
 cd WiringPi; ./build; cd ..
@@ -32,10 +33,10 @@ a2enmod ssl
 systemctl restart apache2.service
 
 #cd petpix_v3/cc65; make; cd ..;
-make bin/petpix
+cd petpix_v3; make bin/petpix; make bin/petscii_timed_sender; cd ..;
 make bin/petscii_timed_sender
 cp petpix_v3/html/*.php /var/www/html/
 mkdir /var/www/html/js
 cp petpix_v3/html/js/*.js /var/www/html/js/
 rm /var/www/html/index.html
-#reboot
+reboot
