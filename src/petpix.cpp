@@ -69,8 +69,9 @@ int main(int argc, char** argv)
     int dd = 3;
     int columns = 40;
     int rows = 25;
+    FILE* logfp = stdout;
 
-    while ((c = getopt(argc, argv, "txd:s:c:")) != -1)
+    while ((c = getopt(argc, argv, "txd:s:c:l:")) != -1)
     {
         if (c == 'x')
         {
@@ -91,6 +92,10 @@ int main(int argc, char** argv)
         else if (c == 'c')
         {
             columns = atoi(optarg);
+        }
+        else if (c == 'l')
+        {
+            logfp = fopen(optarg, "wb");
         }
     }
 
@@ -113,9 +118,10 @@ int main(int argc, char** argv)
     int pagesInSecond = 0;
     int lastsecond = 0;
     digitalWrite(CA1, 1);
-    printf("starting in %d seconds..\n", start_delay);
+    fprintf(logfp, "starting in %d seconds..\n", start_delay);
     delay(start_delay * 1000);
-    printf("started.\n");
+    fprintf(logfp, "started.\n");
+    fflush(logfp);
 
     double handshakeWaitTime = 0.0;
     double outputWaitTime = 0.0;
@@ -135,7 +141,8 @@ int main(int argc, char** argv)
         pagesInSecond++;
         int currSecond = millis() / 1000;
         if (currSecond > lastsecond) {
-            printf("%d FPS hw %f ow %f\n", pagesInSecond, handshakeWaitTime, outputWaitTime);
+            fprintf(logfp, "%d FPS hw %f ow %f\n", pagesInSecond, handshakeWaitTime, outputWaitTime);
+            fflush(logfp);
             pagesInSecond = 0;
             lastsecond = currSecond;
             handshakeWaitTime = 0.0;

@@ -18,5 +18,5 @@ if [ "$_IP" ]; then
 fi
 
 sudo mount -t tmpfs -o size=10000 tmpfs /mnt/tmp
-nc -l -k 9600 | /home/pi/petpix_v3/bin/petpix -d 5
+nc -l -k 9600 | /home/pi/petpix_v3/bin/petpix -d 5 -l /home/pi/petpix_v3/petpix.log &
 exit 0
