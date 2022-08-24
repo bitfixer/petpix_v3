@@ -29,7 +29,7 @@ apt-get -y install php
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout private.key -out certificate.crt
 mv private.key /etc/ssl/private/
 mv certificate.crt /etc/ssl/certs/
-cp petpix_v3/config/000-default.conf /etc/apache2/sites-available/000-default.conf
+cp petpix_v3/setup/000-default.conf /etc/apache2/sites-available/000-default.conf
 a2enmod ssl
 systemctl restart apache2.service
 
