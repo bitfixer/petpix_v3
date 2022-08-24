@@ -1,7 +1,7 @@
 apt-get -y update
 apt-get -y upgrade
-apt-get -y install git
 apt-get -y install ffmpeg
+apt-get -y install git
 sudo -u pi git clone https://github.com/WiringPi/WiringPi
 cd WiringPi; ./build; cd ..
 sudo -u pi git clone https://github.com/bitfixer/petpix_v3.git
