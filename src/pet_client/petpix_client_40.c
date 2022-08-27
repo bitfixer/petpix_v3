@@ -6,39 +6,6 @@
 #include <pet.h>
 #include <string.h>
 
-/*
-original basic program
-5 poke 59468,peek(59468) or 1
-6 poke 59467, peek(59467) and 227
-8 poke 59468,peek(59468) or 224
-10 poke 59467,peek(59467) and 254
-20 a = peek(59457)
-30 poke 32768,45
-40 if(peek(59469) and 2) > 0 then 60
-42 poke 32768,92
-44 if(peek(59469) and 2) > 0 then 60
-45 poke 32768,93
-46 if(peek(59469) and 2) > 0 then 60
-47 poke 32768,47
-48 if(peek(59469) and 2) > 0 then 60
-50 goto 30
-60 for x = 1 to 1000 step 2
-80 poke 59468,(peek(59468) and 31) or 192
-90 a = peek(59457)
-100 poke 32767+x,a
-110 poke 59468, peek(59468) or 224
-120 b = peek(59457)
-130 poke 32767+x+1,b
-140 next x
-150 goto 5
-*/
-
-//#define CA1_TRIGGER     59468
-//#define CA1_DATA_LATCH  59467
-//#define CA1_STATUS      59469
-//#define USERPORT_DATA   59457
-//#define VMEM_START      32768
-
 #define CA1_TRIGGER     0xE84C
 #define CA1_DATA_LATCH  0xE84B
 #define CA1_STATUS      0xE84D
@@ -94,88 +61,88 @@ int main (void)
         asm("ldx #$00");
     
     jumper1:
-j1wait0:
-    asm("lda %w", CA1_STATUS);
-    asm("and #$02");
-    asm("beq %g", j1wait0);
-    asm("lda %w", USERPORT_DATA);
-    asm("sty %w", CA1_TRIGGER);
-    asm("ldy #$ED");
-    asm("sta %w,x", VMEM_START_1);
-    asm("inx");
-j1wait1:
-    asm("lda %w", CA1_STATUS);
-    asm("and #$02");
-    asm("beq %g", j1wait1);
-    asm("lda %w", USERPORT_DATA);
-    asm("sty %w", CA1_TRIGGER);
-    asm("ldy #$CD");
-    asm("sta %w,x", VMEM_START_1);
-    asm("inx");
-    asm("bne %g", jumper1);
-jumper2:
-j2wait0:
-    asm("lda %w", CA1_STATUS);
-    asm("and #$02");
-    asm("beq %g", j2wait0);
-    asm("lda %w", USERPORT_DATA);
-    asm("sty %w", CA1_TRIGGER);
-    asm("ldy #$ED");
-    asm("sta %w,x", VMEM_START_2);
-    asm("inx");
-j2wait1:
-    asm("lda %w", CA1_STATUS);
-    asm("and #$02");
-    asm("beq %g", j2wait1);
-    asm("lda %w", USERPORT_DATA);
-    asm("sty %w", CA1_TRIGGER);
-    asm("ldy #$CD");
-    asm("sta %w,x", VMEM_START_2);
-    asm("inx");
-    asm("bne %g", jumper2);
-jumper3:
-j3wait0:
-    asm("lda %w", CA1_STATUS);
-    asm("and #$02");
-    asm("beq %g", j3wait0);
-    asm("lda %w", USERPORT_DATA);
-    asm("sty %w", CA1_TRIGGER);
-    asm("ldy #$ED");
-    asm("sta %w,x", VMEM_START_3);
-    asm("inx");
-j3wait1:
-    asm("lda %w", CA1_STATUS);
-    asm("and #$02");
-    asm("beq %g", j3wait1);
-    asm("lda %w", USERPORT_DATA);
-    asm("sty %w", CA1_TRIGGER);
-    asm("ldy #$CD");
-    asm("sta %w,x", VMEM_START_3);
-    asm("inx");
-    asm("bne %g", jumper3);
+    j1wait0:
+        asm("lda %w", CA1_STATUS);
+        asm("and #$02");
+        asm("beq %g", j1wait0);
+        asm("lda %w", USERPORT_DATA);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$ED");
+        asm("sta %w,x", VMEM_START_1);
+        asm("inx");
+    j1wait1:
+        asm("lda %w", CA1_STATUS);
+        asm("and #$02");
+        asm("beq %g", j1wait1);
+        asm("lda %w", USERPORT_DATA);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$CD");
+        asm("sta %w,x", VMEM_START_1);
+        asm("inx");
+        asm("bne %g", jumper1);
+    jumper2:
+    j2wait0:
+        asm("lda %w", CA1_STATUS);
+        asm("and #$02");
+        asm("beq %g", j2wait0);
+        asm("lda %w", USERPORT_DATA);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$ED");
+        asm("sta %w,x", VMEM_START_2);
+        asm("inx");
+    j2wait1:
+        asm("lda %w", CA1_STATUS);
+        asm("and #$02");
+        asm("beq %g", j2wait1);
+        asm("lda %w", USERPORT_DATA);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$CD");
+        asm("sta %w,x", VMEM_START_2);
+        asm("inx");
+        asm("bne %g", jumper2);
+    jumper3:
+    j3wait0:
+        asm("lda %w", CA1_STATUS);
+        asm("and #$02");
+        asm("beq %g", j3wait0);
+        asm("lda %w", USERPORT_DATA);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$ED");
+        asm("sta %w,x", VMEM_START_3);
+        asm("inx");
+    j3wait1:
+        asm("lda %w", CA1_STATUS);
+        asm("and #$02");
+        asm("beq %g", j3wait1);
+        asm("lda %w", USERPORT_DATA);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$CD");
+        asm("sta %w,x", VMEM_START_3);
+        asm("inx");
+        asm("bne %g", jumper3);
 
-    asm("ldx #$18");
-jumper4:
-j4wait0:
-    asm("lda %w", CA1_STATUS);
-    asm("and #$02");
-    asm("beq %g", j4wait0);
-    asm("lda %w", USERPORT_DATA);
-    asm("sty %w", CA1_TRIGGER);
-    asm("ldy #$ED");
-    asm("sta %w,x", VMEM_START_4);
-    asm("inx");
-j4wait1:
-    asm("lda %w", CA1_STATUS);
-    asm("and #$02");
-    asm("beq %g", j4wait1);
-    asm("lda %w", USERPORT_DATA);
-    asm("sty %w", CA1_TRIGGER);
-    asm("ldy #$CD");
-    asm("sta %w,x", VMEM_START_4);
-    asm("inx");
-    asm("bne %g", jumper4);
-        //TEST
+        asm("ldx #$18");
+    jumper4:
+    j4wait0:
+        asm("lda %w", CA1_STATUS);
+        asm("and #$02");
+        asm("beq %g", j4wait0);
+        asm("lda %w", USERPORT_DATA);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$ED");
+        asm("sta %w,x", VMEM_START_4);
+        asm("inx");
+    j4wait1:
+        asm("lda %w", CA1_STATUS);
+        asm("and #$02");
+        asm("beq %g", j4wait1);
+        asm("lda %w", USERPORT_DATA);
+        asm("sty %w", CA1_TRIGGER);
+        asm("ldy #$CD");
+        asm("sta %w,x", VMEM_START_4);
+        asm("inx");
+        asm("bne %g", jumper4);
+        
         key = PEEK(CURR_KEY);
     }
 	return EXIT_SUCCESS;
