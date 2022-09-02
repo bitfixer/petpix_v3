@@ -6,6 +6,7 @@ if (move_uploaded_file($tmp_name, $target_file)) {
     printf("file %s successfully uploaded.\n", $target_file);
     $cmd = sprintf("bin/convert_one_video -v %s", $target_file);
     shell_exec($cmd);
+    unlink($target_file);
 } else {
     printf("error uploading %s\n", $target_file);
 }
