@@ -32,6 +32,9 @@ bin/convert_one_video: src/convert_one_video.cpp
 bin/interleave: src/interleave.cpp
 	g++ -o bin/interleave $^
 
+bin/petpixPlayer: src/petpixPlayer.cpp bf-shared/timer.cpp
+	g++ -o bin/petpixPlayer -Ibf-shared $^
+
 PHONY: stream
 stream: bin/petpix
 	nc -l -k 9600 | bin/petpix -d 5
