@@ -1,9 +1,24 @@
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
 #include "timer.hpp"
+
+void stripWhitespace(char* str)
+{
+    for (char* c = str; *c != 0; c++)
+    {
+        if (isspace(*c))
+        {
+            for (char* cc = c; *cc != 0; cc++)
+            {
+                *cc = *(cc+1);
+            }
+        }
+    }
+}
 
 uint8_t getControlByte(char* controlFileName)
 {
@@ -28,25 +43,15 @@ int loadPlaylist(char* playlistFileName, char** playlistEntries)
 
     int i = 0;
 
-    bool done = false;
-    //while (fgets(playlistEntries[i], 256, fp) != NULL)
-    while (!done)
+    while (fgets(playlistEntries[i], 256, fp) != NULL)
     {
-        if (fp == NULL) { printf("done!!\n"); }
-        printf("here, %d *%s*\n", i, playlistEntries[i]);
-        if (fgets(playlistEntries[i], 256, fp) == NULL)
+        if (strlen(playlistEntries[i]) <= 1)
         {
-            done = true;
             break;
         }
-        fprintf(stderr, "%d: %s\n", i, playlistEntries[i]);
-
+        stripWhitespace(playlistEntries[i]);
+        printf("%d: %s\n", i, playlistEntries[i]);
         i++;
-        printf("line %d\n", i);
-        if (fp == NULL)
-        {
-            printf("null\n");
-        }
     }
 
     return i;
@@ -98,15 +103,6 @@ int main(int argc, char** argv)
     float lastDisplayTime = -1;
     int framesPerSecond = 0;
     int lastSecond = 0;
-
-    /*
-    playlistEntries = new (char*[])
-    for (int i = 0; i < 256; i++)
-    {
-        playlistEntries[i] = new char[256];
-        playlistEntries[i][0] = 0;
-    }
-    */
 
     playlistEntries = (char**)malloc(sizeof(char*) * 256);
     for (int i = 0; i < 256; i++)
@@ -169,10 +165,10 @@ int main(int argc, char** argv)
             uint8_t b = getControlByte(controlFileName);
             if (b != controlByte)
             {
+                controlByte = b;
+                printf("control byte: %X\n", controlByte);
                 // reload the playlist
                 numPlaylistEntries = loadPlaylist(playlistFileName, playlistEntries);
-                printf("npe: %s\n", numPlaylistEntries);
-                exit(1);
                 currPlaylistItem = 0;
             }
 
@@ -215,14 +211,15 @@ int main(int argc, char** argv)
                 continue;
             }
 
-            printf("time: %f\n", time);
-
+            //printf("t: %f\n", time);
             if (lastDisplayTime < 0 || time < lastDisplayTime)
             {
                 timer->start();
             }
 
-            bool skip = waitForFrame(time, timer);
+            //bool skip = waitForFrame(time, timer);
+            usleep(100);
+            bool skip = false;
             lastDisplayTime = (double)time;
 
             if (skip)
