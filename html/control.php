@@ -1,12 +1,14 @@
 <html>
 <body style="background-color: #000000; color: #00FF00;">
 <script src="js/control.js"></script>
-
-<form action="upload.php" method="post" enctype="multipart/form-data">
+<form id="uploadVideoForm" action="upload.php" method="post" enctype="multipart/form-data">
     Upload Video:<br/>
     <input name="videoFile" type="file"/><br/>
-    <input type="submit" value="Upload Video"/>
 </form>
+<button onclick="uploadVideo()">Upload Video</button>
+<br>
+<div id="uploadStatus"></div>
+<br>
 Available PETpix videos:<br>
 <table>
 <?php

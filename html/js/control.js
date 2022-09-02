@@ -27,3 +27,23 @@ function playPlaylist() {
     }
     xhttp.send(playlistStr);
 }
+
+function uploadVideo() {
+    var uploadStatus = document.getElementById("uploadStatus");
+    uploadStatus.innerHTML = "Uploading, please wait.";
+
+    var uploadVideoUrl = "upload.php";
+    var uploadForm = document.getElementById("uploadVideoForm");
+    var files = document.querySelector('[name=videoFile]').files;
+    var formData = new FormData();
+    formData.append('videoFile', files[0]);
+
+    var xhr = new XMLHttpRequest();
+    xhr.onload = () => {
+        uploadStatus.innerHTML = xhr.response;
+        window.location.reload(true);
+    }
+
+    xhr.open('POST', uploadVideoUrl);
+    xhr.send(formData);
+}
