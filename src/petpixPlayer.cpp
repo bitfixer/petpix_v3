@@ -89,6 +89,7 @@ int main(int argc, char** argv)
     int port = 9600;
     char controlFileName[256];
     char playlistFileName[256];
+    char videoDirectory[256];
     char** playlistEntries;
     char ncCmdString[1024];
     int numPlaylistEntries = 0;
@@ -115,8 +116,9 @@ int main(int argc, char** argv)
     sprintf(tempFile, "/mnt/tmp/temp.img");
     sprintf(controlFileName, "/mnt/tmp/p.ctl");
     sprintf(playlistFileName, "playlist.txt");
+    sprintf(videoDirectory, "/var/www/html/uploads/");
 
-    while ((c = getopt(argc, argv, "a:f:p:c:l:n:")) != -1)
+    while ((c = getopt(argc, argv, "a:f:p:c:l:n:v:")) != -1)
     {
         if (c == 'a')
         {
@@ -146,6 +148,10 @@ int main(int argc, char** argv)
         {
             strcpy(controlFileName, optarg);
         }
+        else if (c == 'v')
+        {
+            strcpy(videoDirectory, optarg);
+        }
     }
 
     int bytesInFrame = rows * columns;
@@ -172,16 +178,37 @@ int main(int argc, char** argv)
                 currPlaylistItem = 0;
             }
 
+            if (numPlaylistEntries == 0)
+            {
+                printf("no playlist.\n");
+                sleep(1);
+                continue;
+            }
+
             // read playlist and move to next file
             char* playlistEntry = playlistEntries[currPlaylistItem];
-            fpInput = fopen(playlistEntry, "rb");
+            char videoFname[1024];
+            sprintf(videoFname, "%s%s", videoDirectory, playlistEntry);
+            printf("opening %s\n", videoFname);
+            fpInput = fopen(videoFname, "rb");
             if (fpInput)
             {
                 printf("playing: %s\n", playlistEntry);
+                // set number of columns from filename
+                if (strstr(playlistEntry, ".p40"))
+                {
+                    columns = 40;
+                }
+                else if (strstr(playlistEntry, ".p80"))
+                {
+                    columns = 80;
+                }
+                bytesInFrame = rows * columns;
             }
             else
             {
                 printf("could not open %s\n", playlistEntry);
+                sleep(1);
             }
 
             currPlaylistItem++;
@@ -217,9 +244,7 @@ int main(int argc, char** argv)
                 timer->start();
             }
 
-            //bool skip = waitForFrame(time, timer);
-            usleep(100);
-            bool skip = false;
+            bool skip = waitForFrame(time, timer);
             lastDisplayTime = (double)time;
 
             if (skip)
@@ -242,6 +267,15 @@ int main(int argc, char** argv)
                     printf("%d FPS %d frames skipped\n", framesPerSecond, framesSkipped);
                     framesPerSecond = 0;
                     framesSkipped = 0;
+
+                    // check for update
+                    uint8_t b = getControlByte(controlFileName);
+                    if (b != controlByte)
+                    {
+                        // stop playing this video, reload playlist and start again
+                        fclose(fpInput);
+                        fpInput = NULL;
+                    }
                 }
             }
         }
