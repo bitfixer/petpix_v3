@@ -34,7 +34,7 @@ a2enmod ssl
 systemctl restart apache2.service
 
 #cd petpix_v3/cc65; make; cd ..;
-cd petpix_v3; make bin/petpix; make bin/petscii_timed_sender; cd ..;
+cd petpix_v3; make bin/petpix; make bin/petscii_timed_sender; make bin/petpixPlayer; cd ..;
 cp petpix_v3/html/*.php /var/www/html/
 mkdir /var/www/html/js
 cp petpix_v3/html/js/*.js /var/www/html/js/

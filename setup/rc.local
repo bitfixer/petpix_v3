@@ -19,4 +19,5 @@ fi
 
 sudo mount -t tmpfs -o size=10000 tmpfs /mnt/tmp
 nc -l -k 9600 | /home/pi/petpix_v3/bin/petpix -d 5 -l /home/pi/petpix_v3/petpix.log &
+/home/pi/petpix_v3/bin/petpixPlayer &
 exit 0

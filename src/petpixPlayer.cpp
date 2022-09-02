@@ -115,7 +115,7 @@ int main(int argc, char** argv)
     sprintf(destAddr, "127.0.0.1");
     sprintf(tempFile, "/mnt/tmp/temp.img");
     sprintf(controlFileName, "/mnt/tmp/p.ctl");
-    sprintf(playlistFileName, "playlist.txt");
+    sprintf(playlistFileName, "/var/www/html/control/playlist.txt");
     sprintf(videoDirectory, "/var/www/html/uploads/");
 
     while ((c = getopt(argc, argv, "a:f:p:c:l:n:v:")) != -1)
