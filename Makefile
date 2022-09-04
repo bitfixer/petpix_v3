@@ -1,3 +1,7 @@
+all: bin/petpix bin/petscii_timed_sender bin/petpixPlayer bin/convert_one_video bin/petscii_convert
+
+clean:
+	rm bin/*
 
 bin/petpix: src/petpix.h src/petpix.cpp src/timer.cpp
 	g++ -o bin/petpix src/petpix.cpp src/timer.cpp -lwiringPi

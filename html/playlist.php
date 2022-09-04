@@ -6,7 +6,7 @@
 
     // write control byte
     $control_byte = 1;
-    $control_file = fopen("control/p.ctl", "r");
+    $control_file = fopen("/mnt/tmp/p.ctl", "r");
     if ($control_file)
     {
         $byte = fread($control_file, 1);
@@ -18,7 +18,7 @@
         }
         fclose($control_file);
     }
-    $control_file = fopen("control/p.ctl", "w");
+    $control_file = fopen("/mnt/tmp/p.ctl", "w");
     $bs = pack("C", $control_byte);
     fwrite($control_file, $bs);
     fclose($control_file);
