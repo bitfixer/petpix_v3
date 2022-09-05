@@ -4,10 +4,10 @@
 #include <unistd.h>
 #include <math.h>
 
-int getFps(char* inputPrefix)
+int getFps(char* inputPrefix, char* inputFname)
 {
     char ffmpegCmd[1024];
-    sprintf(ffmpegCmd, "ffmpeg -i %s.mp4 2>%s_info.txt", inputPrefix, inputPrefix);
+    sprintf(ffmpegCmd, "ffmpeg -i %s 2>%s_info.txt", inputFname, inputPrefix);
     system(ffmpegCmd);
 
     char grepCmd[256];
@@ -50,11 +50,12 @@ void convert_video(char* videoFname, int columns, int method)
     char cmd[1024];
     // get prefix
     strcpy(prefix, videoFname);
-    char* ext = strstr(prefix, ".mp4");
+    char* ext = &prefix[strlen(prefix) - 4];
     *ext = 0;
+    printf("prefix: %s\n", prefix);
 
     // get framerate
-    int fps = getFps(prefix);
+    int fps = getFps(prefix, videoFname);
     printf("fps: %d\n", fps);
 
     char ffmpegCmd[256];
