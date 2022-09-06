@@ -41,8 +41,54 @@ int getFps(char* inputPrefix, char* inputFname)
     return (int)round(fps);
 }
 
-// ffmpeg -i $1 -vf scale=$3:$4 -y -r $2 -vcodec rawvideo -pix_fmt gray -f rawvideo pipe:1 2>/dev/null | \
-// bin/petscii_convert -f $2 -w $3 -h $4 -p gray -t $8 $7 -s $6 -n 5 -m 1 2>/dev/null > $5
+void runConversion(char* videoFname, int fps, char* prefix, int columns, int rows, int method)
+{
+    char ffmpegCmd[512];
+    char convertCmd[512];
+    char fullCmd[2048];
+    char outputFname[256];
+    char options[128];
+
+    int width = columns * 8;
+    int height = rows * 8;
+
+    sprintf(ffmpegCmd, "ffmpeg -i %s -vf scale=%d:%d -y -r %d -vcodec rawvideo -pix_fmt gray -f rawvideo pipe:1 2>/dev/null",
+        videoFname,
+        width,
+        height,
+        fps);
+
+    if (columns == 40)
+    {
+        sprintf(outputFname, "%s.p40", prefix);
+    }
+    else if (columns == 80)
+    {
+        sprintf(outputFname, "%s.p80", prefix);
+    }
+
+    if (method == 1)
+    {
+        sprintf(options, "-s 4000 -z");
+        //sprintf(convertCmd, "bin/petscii_convert -f %s -w %d -h %d -p gray -t -z -s 4000 -n 5 -m 1 2>/dev/null > %s", videoFname, width, height,)
+    }
+    else if (method == 2)
+    {
+        sprintf(options, "-s 80");
+    }
+
+    sprintf(convertCmd, "bin/petscii_convert -f %d -w %d -h %d -p gray -t -n 5 -m 1 %s 2>/dev/null > %s",
+        fps,
+        width,
+        height,
+        options,
+        outputFname);
+
+    sprintf(fullCmd, "%s | %s", ffmpegCmd, convertCmd);
+
+    printf("command: %s\n", fullCmd);
+    system(fullCmd);
+}
 
 void convert_video(char* videoFname, int columns, int method)
 {
@@ -52,50 +98,10 @@ void convert_video(char* videoFname, int columns, int method)
     strcpy(prefix, videoFname);
     char* ext = &prefix[strlen(prefix) - 4];
     *ext = 0;
-    printf("prefix: %s\n", prefix);
 
     // get framerate
     int fps = getFps(prefix, videoFname);
-    printf("fps: %d\n", fps);
-
-    char ffmpegCmd[256];
-    char convertCmd[256];
-    char fullCmd[1024];
-
-    if (columns == 40)
-    {
-        if (method == 1)
-        {
-            // 40 column
-            sprintf(cmd, "./stream2.sh %s %d 320 200 %s.p40 4000 -z", videoFname, fps, prefix);
-            printf("%s\n", cmd);
-            system(cmd);
-        }
-        else if (method == 2)
-        {
-            // 40 column dct
-            sprintf(cmd, "./stream2.sh %s %d 320 200 %s_dct.p40 80", videoFname, fps, prefix);
-            printf("%s\n", cmd);
-            system(cmd);
-        }
-    }
-    else if (columns == 80)
-    {
-        if (method == 1)
-        {
-            // 80 column
-            sprintf(cmd, "./stream2.sh %s %d 640 200 %s.p80 4000 -z", videoFname, fps, prefix);
-            printf("%s\n", cmd);
-            system(cmd);
-        }
-        else if (method == 2)
-        {
-            // 80 column dct
-            sprintf(cmd, "./stream2.sh %s %d 640 200 %s_dct.p80 80", videoFname, fps, prefix);
-            printf("%s\n", cmd);
-            system(cmd);
-        }
-    }
+    runConversion(videoFname, fps, prefix, columns, 25, method);
 }
 
 int main(int argc, char** argv)
