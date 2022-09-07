@@ -33,6 +33,9 @@ for ($i = 0; $i < count($files); $i++)
 PETpix playlist:<br>
 <ul id="playlist">
 </ul>
-<button onclick="playPlaylist()">PLAY</button><div id="status"></div>
+<button onclick="clearPlaylist()">Clear</button>
+<button onclick="playPlaylist()">PLAY</button>
+<button onclick="stopPlaylist()">STOP</button>
+<div id="status"></div>
 
 </html>
