@@ -5,6 +5,10 @@
     Upload Video:<br/>
     <input name="videoFile" type="file"/><br/>
 </form>
+<input type="radio" id="40col" name="columns" value="40" checked="checked">
+<label for="40col">40 Columns</label><br>
+<input type="radio" id="80col" name="columns" value="80">
+<label for="80col">80 Columns</label><br>
 <button onclick="uploadVideo()">Upload Video</button>
 <br>
 <div id="uploadStatus"></div>

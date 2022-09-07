@@ -32,7 +32,19 @@ function uploadVideo() {
     var uploadStatus = document.getElementById("uploadStatus");
     uploadStatus.innerHTML = "Uploading, please wait.";
 
-    var uploadVideoUrl = "upload.php";
+    // check selected value for columns
+    var colSelect = document.getElementsByName("columns");
+    var colString = "40";
+    for (i = 0; i < colSelect.length; i++)
+    {
+        if (colSelect[i].checked)
+        {
+            colString = colSelect[i].value;
+            break;
+        }
+    }
+
+    var uploadVideoUrl = "upload.php?c=" + colString;
     var uploadForm = document.getElementById("uploadVideoForm");
     var files = document.querySelector('[name=videoFile]').files;
     var formData = new FormData();
