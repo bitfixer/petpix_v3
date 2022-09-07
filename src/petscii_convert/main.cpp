@@ -142,10 +142,16 @@ int main (int argc, char * const argv[]) {
     int sixteenthFilterPct = 50;
     bool excludeLetters = false;
     bool brightnessOnly = false;
+    int totalFrames = 0;
+    bool outputProgress = false;
+    char progressFile[64];
+    int progressPct = 0;
+
+    sprintf(progressFile, "/mnt/tmp/prog");
 
     uint8_t filterMask = FILTER_BY_BRIGHTNESS | FILTER_BY_QUAD | FILTER_BY_SIXTEENTHS;
     
-    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:n:d:m:e:r:t:xb")) != -1)
+    while ((c = getopt(argc, argv, "f:w:h:p:i:ots:zq:n:d:m:e:r:t:xbg:v:")) != -1)
     {
         if (c == 'f') // framerate
         {
@@ -222,6 +228,16 @@ int main (int argc, char * const argv[]) {
         {
             brightnessOnly = true;
         }
+        else if (c == 'g')
+        {
+            totalFrames = atoi(optarg);
+            outputProgress = true;
+            progressPct = 0;
+        }
+        else if (c == 'v')
+        {
+            strcpy(progressFile, optarg);
+        }
     }
     
     int framesize = (pf == RGB) ? width * height * 3 : width * height;
@@ -267,6 +283,15 @@ int main (int argc, char * const argv[]) {
         }
         frameTime += frameInterval;
         frameNumber++;
+
+        float prog = (float)frameNumber * 100.0 / (float)totalFrames;
+        if ((int)prog > progressPct)
+        {
+            progressPct = (int)prog;
+            FILE* fp = fopen(progressFile, "wb");
+            fprintf(fp, "%d", progressPct);
+            fclose(fp);
+        }
     }
     
     if (fp_in != stdin)
@@ -798,7 +823,7 @@ void convertImageFromGraySimpleMultithreaded(
     fwrite(glyphResults, 1, numCharacters, fp_out);
 
     free(threads);
-    fprintf(stderr, "elapsed: %f\n", elapsed);
+    //fprintf(stderr, "elapsed: %f\n", elapsed);
 }
 
 

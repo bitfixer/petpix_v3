@@ -1,3 +1,5 @@
+var updateIntervalTimer;
+
 function addVideo(video) {
     let playlist = document.querySelector('#playlist');
     let li = document.createElement('li');
@@ -44,6 +46,18 @@ function clearPlaylist() {
     playlist.innerHTML = "";
 }
 
+function updateVideoProgress() {
+    var xhttp = new XMLHttpRequest();
+    xhttp.open("GET", "upload.php?p=1", true);
+
+    xhttp.onload = function() {
+        var uploadProgressField = document.getElementById("uploadProgress");
+        uploadProgressField.innerHTML = xhttp.responseText;
+    }
+
+    xhttp.send();
+}
+
 function uploadVideo() {
     var uploadStatus = document.getElementById("uploadStatus");
     uploadStatus.innerHTML = "Uploading, please wait.";
@@ -68,10 +82,14 @@ function uploadVideo() {
 
     var xhr = new XMLHttpRequest();
     xhr.onload = () => {
+        clearInterval(updateIntervalTimer);
         uploadStatus.innerHTML = xhr.response;
         window.location.reload(true);
     }
 
     xhr.open('POST', uploadVideoUrl);
     xhr.send(formData);
+
+    // update progress
+    updateIntervalTimer = setInterval(updateVideoProgress, 1000);
 }

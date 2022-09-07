@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <math.h>
 
-int getFps(char* inputPrefix, char* inputFname)
+void getVideoInfo(char* inputPrefix, char* inputFname, int* fpsVal, int* numFrames)
 {
     char ffmpegCmd[1024];
     sprintf(ffmpegCmd, "ffmpeg -i %s 2>%s_info.txt", inputFname, inputPrefix);
@@ -12,6 +12,9 @@ int getFps(char* inputPrefix, char* inputFname)
 
     char grepCmd[256];
     sprintf(grepCmd, "grep \" fps\" %s_info.txt > %s_fps.txt", inputPrefix, inputPrefix);
+    system(grepCmd);
+
+    sprintf(grepCmd, "grep \"Duration:\" %s_info.txt > %s_duration.txt", inputPrefix, inputPrefix);
     system(grepCmd);
 
     char info[1024];
@@ -31,6 +34,21 @@ int getFps(char* inputPrefix, char* inputFname)
     *ff = 0;
     float fps = atof(fpsStart);
 
+    sprintf(infoFname, "%s_duration.txt", inputPrefix);
+    fp = fopen(infoFname, "rb");
+    fread(info, 1, 1024, fp);
+    fclose(fp);
+
+    int hours;
+    int minutes;
+    float seconds;
+    ff = strstr(info, "Duration:");
+    ff += strlen("Duration: ");
+    sscanf(ff, "%02d:%02d:%f,", &hours, &minutes, &seconds);
+    
+    float totalSeconds = (float)(hours*60*60) + (float)(minutes*60) + seconds;
+    float totalFrames = totalSeconds * fps;
+
     // clean up
     char cleanCmd[256];
     sprintf(cleanCmd, "rm %s_info.txt", inputPrefix);
@@ -38,10 +56,11 @@ int getFps(char* inputPrefix, char* inputFname)
 
     sprintf(cleanCmd, "rm %s_fps.txt", inputPrefix);
     system(cleanCmd);
-    return (int)round(fps);
+    *fpsVal = (int)round(fps);
+    *numFrames = (int)round(totalFrames);
 }
 
-void runConversion(char* videoFname, int fps, char* prefix, int columns, int rows, int method)
+void runConversion(char* videoFname, int fps, int numFrames, char* prefix, int columns, int rows, int method)
 {
     char ffmpegCmd[512];
     char convertCmd[512];
@@ -77,10 +96,11 @@ void runConversion(char* videoFname, int fps, char* prefix, int columns, int row
         sprintf(options, "-s 80");
     }
 
-    sprintf(convertCmd, "bin/petscii_convert -f %d -w %d -h %d -p gray -t -n 5 -m 1 %s 2>/dev/null > %s",
+    sprintf(convertCmd, "bin/petscii_convert -f %d -w %d -h %d -p gray -t -n 5 -m 1 -g %d -v prog %s 2>/dev/null > %s",
         fps,
         width,
         height,
+        numFrames,
         options,
         outputFname);
 
@@ -100,8 +120,13 @@ void convert_video(char* videoFname, int columns, int method)
     *ext = 0;
 
     // get framerate
-    int fps = getFps(prefix, videoFname);
-    runConversion(videoFname, fps, prefix, columns, 25, method);
+    int fps;
+    int numFrames;
+    //int fps = getFps(prefix, videoFname);
+    //int numFrames = getNumFrames()
+    getVideoInfo(prefix, videoFname, &fps, &numFrames);
+    printf("numframes: %d\n", numFrames);
+    runConversion(videoFname, fps, numFrames, prefix, columns, 25, method);
 }
 
 int main(int argc, char** argv)

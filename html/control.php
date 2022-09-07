@@ -12,6 +12,7 @@
 <button onclick="uploadVideo()">Upload Video</button>
 <br>
 <div id="uploadStatus"></div>
+<div id="uploadProgress"></div>
 <br>
 Available PETpix videos:<br>
 <table>
