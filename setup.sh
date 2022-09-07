@@ -35,15 +35,10 @@ a2enmod ssl
 systemctl restart apache2.service
 
 cd petpix_v3; make all; cd ..
-cp petpix_v3/html/*.php /var/www/html/
-mkdir /var/www/html/js
-cp petpix_v3/html/js/*.js /var/www/html/js/
-mkdir /var/www/html/control
-cp petpix_v3/html/control/* /var/www/html/control/
+cp -r petpix_v3/html/* /var/www/html/
 mkdir /var/www/html/bin
 cp petpix_v3/bin/convert_one_video /var/www/html/bin
 cp petpix_v3/bin/petscii_convert /var/www/html/bin
 rm /var/www/html/index.html
-mkdir /var/www/html/uploads
 chmod 777 /var/www/html/uploads
 reboot
