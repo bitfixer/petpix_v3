@@ -3,8 +3,7 @@
     {
         // read current conversion progress
         $progress = "0";
-        //$progressFile = "/mnt/tmp/prog";
-        $progressFile = "prog";
+        $progressFile = "/mnt/tmp/prog";
         if (file_exists($progressFile))
         {
             $progress = file_get_contents($progressFile);
@@ -31,6 +30,7 @@
 
             shell_exec($cmd);
             unlink($target_file);
+            unlink("/mnt/tmp/prog");
         } else {
             printf("error uploading %s\n", $target_file);
         }

@@ -96,7 +96,7 @@ void runConversion(char* videoFname, int fps, int numFrames, char* prefix, int c
         sprintf(options, "-s 80");
     }
 
-    sprintf(convertCmd, "bin/petscii_convert -f %d -w %d -h %d -p gray -t -n 5 -m 1 -g %d -v prog %s 2>/dev/null > %s",
+    sprintf(convertCmd, "bin/petscii_convert -f %d -w %d -h %d -p gray -t -n 5 -m 1 -g %d %s 2>/dev/null > %s",
         fps,
         width,
         height,
