@@ -13,9 +13,6 @@ var characters = columns*rows;
 var charDim = 8;
 
 canvas.width = 320;
-//canvas.height = 200;
-
-//canvas.width = columns * charDim;
 canvas.height = rows * charDim;
 
 canvas.style.width = screenWidth + 'px';
@@ -37,6 +34,8 @@ var glyphBrightness = new Float32Array(256);
 var requestInProgress = false;
 var queuedImage = false;
 
+var drawGlyphs = true;
+
 function getGlyphBrightness() {
     var g = 0;
     var gi = 0;
@@ -55,23 +54,43 @@ function getGlyphBrightness() {
 
 function sendImageData() {
     clearInterval(sendInterval);
-    requestInProgress = true;
+    /*
     var xhttp = new XMLHttpRequest();
     xhttp.open("POST", "testupload.php", true);
     xhttp.onload = function() {
-        requestInProgress = false;
-        if (queuedImage)
-        {
-            // send queued image
-            queuedImage = false;
-            sendInterval = setInterval(sendImageData, 0);
-        }
+        captureInterval = setInterval(postSend, 0);
     }
-    console.log("sending\n");
     xhttp.send(glyphResult);
-    captureInterval = setInterval(captureImage, cdelay);
+    */
+
+    captureInterval = setInterval(postSend, 0);
 }
 
+function drawGlyph(glyphIndex, pictureIndex, imdata) {
+    var gind = glyphIndex*64;
+    var regionIndex = 0;
+    var imageIndex = 0;
+    var yy;
+    var xx;
+    // write glyph pixels back into canvas
+    for (yy = 0; yy < 8; yy++)
+    {
+        imageIndex = pictureIndex + (yy*canvas.width*4);
+        for (xx = 0; xx < 8; xx++)
+        {
+            var vv = glyphs[gind + regionIndex];
+            imdata.data[imageIndex] = vv;
+            imdata.data[imageIndex+1] = vv;
+            imdata.data[imageIndex+2] = vv;
+            regionIndex++;
+            imageIndex += 4;
+        }
+    }
+}
+
+// get pixels from the video element
+// draw into canvas
+// do video processing in the canvas
 function captureImage() {
     clearInterval(captureInterval);
 
@@ -81,18 +100,23 @@ function captureImage() {
     var yOffset = scaledYOffset / xScale;
     var outHeight = video.videoHeight - (2 * yOffset);
 
+    preCapture();
+    /*
     var ctx = canvas.getContext('2d');
-
     if (facing == "f") 
     {
         ctx.translate(canvas.width,0);
         ctx.scale(-1,1);
     }   
+    */
     canvas.getContext('2d').drawImage(video, 0, yOffset, video.videoWidth, outHeight, 0, 0, canvas.width, canvas.height);
+    postCapture();
+    /*
     if (facing == "f")
     {
         ctx.setTransform(1,0,0,1,0,0);
     }
+    */
 
     var imdata = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
 
@@ -101,7 +125,6 @@ function captureImage() {
     var input_index = 0;
     var output_index = 0;
     var numpixels = canvas.width * canvas.height;
-    
 
     var y = 0;
     var x = 0;
@@ -178,56 +201,20 @@ function captureImage() {
                     }
                 }
             }
+
+            if (drawGlyphs) {
+                drawGlyph(minErrorIndex, pind, imdata);
+            }
+
             glyphResult[glyphResultIndex] = minErrorIndex;
             glyphResultIndex++;
         }
     }
 
-    if (requestInProgress == false)
-    {
-        sendImageData();
+    if (drawGlyphs) {
+        canvas.getContext('2d').putImageData(imdata, 0, 0);
     }
-    else
-    {
-        console.log("waiting\n");
-        queuedImage = true;
-    }
-}
-
-const rVidConstraints = {
-    facingMode: 'environment'
-};
-
-const fVidConstraints = {
-    facingMode: 'self'
-};
-
-const rConstraints = {
-  audio: false,
-  video: rVidConstraints
-};
-
-const fConstraints = {
-    audio: false,
-    video: fVidConstraints
-}
-
-function handleSuccess(stream) {
-  window.stream = stream; // make stream available to browser console
-  video.srcObject = stream;
-  captureInterval = setInterval(captureImage, 33);
-}
-
-function handleError(error) {
-  console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
+    sendImageData();
 }
 
 getGlyphBrightness();
-if (facing == 'r')
-{
-    navigator.mediaDevices.getUserMedia(rConstraints).then(handleSuccess).catch(handleError);
-} 
-else
-{
-    navigator.mediaDevices.getUserMedia(fConstraints).then(handleSuccess).catch(handleError);
-}

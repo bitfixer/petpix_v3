@@ -147,7 +147,7 @@ Capture Delay (MS) <input type="range" id="captureDelay" min="0" max="33" value=
 </script>
 
 <script src="js/glyphdata.js"></script>
-<script src="js/main.js" async></script>
-
+<script src="js/main.js"></script>
+<script src="js/camera.js"></script>
 </body>
 </html>
