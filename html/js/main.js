@@ -27,7 +27,6 @@ video.style.height = '1px';
 
 const testdiv = document.querySelector('#testdiv');
 var captureInterval;
-var sendInterval;
 var pixRegion = new Float32Array(glyphDim * glyphDim);
 var glyphResult = new Uint8Array(characters);
 var glyphBrightness = new Float32Array(256);
@@ -53,17 +52,12 @@ function getGlyphBrightness() {
 }
 
 function sendImageData() {
-    clearInterval(sendInterval);
-    /*
     var xhttp = new XMLHttpRequest();
     xhttp.open("POST", "testupload.php", true);
     xhttp.onload = function() {
         captureInterval = setInterval(postSend, 0);
     }
     xhttp.send(glyphResult);
-    */
-
-    captureInterval = setInterval(postSend, 0);
 }
 
 function drawGlyph(glyphIndex, pictureIndex, imdata) {
@@ -100,25 +94,12 @@ function captureImage() {
     var yOffset = scaledYOffset / xScale;
     var outHeight = video.videoHeight - (2 * yOffset);
 
-    preCapture();
-    /*
     var ctx = canvas.getContext('2d');
-    if (facing == "f") 
-    {
-        ctx.translate(canvas.width,0);
-        ctx.scale(-1,1);
-    }   
-    */
-    canvas.getContext('2d').drawImage(video, 0, yOffset, video.videoWidth, outHeight, 0, 0, canvas.width, canvas.height);
+    preCapture();
+    ctx.drawImage(video, 0, yOffset, video.videoWidth, outHeight, 0, 0, canvas.width, canvas.height);
     postCapture();
-    /*
-    if (facing == "f")
-    {
-        ctx.setTransform(1,0,0,1,0,0);
-    }
-    */
 
-    var imdata = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+    var imdata = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
     // get grayscale image
     var p = 0;
