@@ -12,7 +12,8 @@ var rows = 25;
 var characters = columns*rows;
 var charDim = 8;
 
-canvas.width = 320;
+// canvas.width = 320;
+canvas.width = columns * charDim;
 canvas.height = rows * charDim;
 
 canvas.style.width = screenWidth + 'px';
@@ -122,11 +123,12 @@ function captureImage() {
     var horizGlyphDim = glyphDim;
     var horizGlyphScale = 1;
     var hg;
-    if (columns == 80)
-    {
-        horizGlyphDim = glyphDim / 2;
-        horizGlyphScale = 2;
-    }
+
+    //if (columns == 80)
+    //{
+    //    horizGlyphDim = glyphDim / 2;
+    //    horizGlyphScale = 2;
+    //}
 
     for (y = 0; y < canvas.height; y += glyphDim)
     {
