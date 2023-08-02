@@ -18,6 +18,9 @@ if [ "$_IP" ]; then
 fi
 
 sudo mount -t tmpfs -o size=10000 tmpfs /mnt/tmp
+# netcat is piping frames to petpix, which sends them to the pet
 nc -l -k 9600 | /home/pi/petpix_v3/bin/petpix -d 5 -l /home/pi/petpix_v3/petpix.log &
-/home/pi/petpix_v3/bin/petpixPlayer &
+
+# turn off petpixPlayer (playlists) for now
+#/home/pi/petpix_v3/bin/petpixPlayer &
 exit 0

@@ -2,24 +2,29 @@ apt-get -y update
 apt-get -y upgrade
 apt-get -y install ffmpeg
 apt-get -y install git
+apt-get -y install netcat
 sudo -u pi git clone https://github.com/WiringPi/WiringPi
 cd WiringPi; ./build; cd ..
 sudo -u pi git clone https://github.com/bitfixer/petpix_v3.git
 cd petpix_v3; git submodule init; git submodule update; cd ..
 
-apt-get -y install hostapd
-systemctl unmask hostapd
-systemctl enable hostapd
-apt-get -y install dnsmasq
+# this part sets up a self hosted access point
+# disabling for now for ease of debugging
 
-mv /etc/dhcpcd.conf /etc/dhcpcd.conf.orig
-cp petpix_v3/setup/dhcpcd.conf /etc/dhcpcd.conf
+# apt-get -y install hostapd
+# systemctl unmask hostapd
+# systemctl enable hostapd
+# apt-get -y install dnsmasq
 
-mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
-cp petpix_v3/setup/dnsmasq.conf /etc/dnsmasq.conf
-rfkill unblock wlan
-cp petpix_v3/setup/hostapd.conf /etc/hostapd/hostapd.conf
+# mv /etc/dhcpcd.conf /etc/dhcpcd.conf.orig
+# cp petpix_v3/setup/dhcpcd.conf /etc/dhcpcd.conf
 
+# mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+# cp petpix_v3/setup/dnsmasq.conf /etc/dnsmasq.conf
+# rfkill unblock wlan
+# cp petpix_v3/setup/hostapd.conf /etc/hostapd/hostapd.conf
+
+# install startup script
 mkdir /mnt/tmp
 cp petpix_v3/setup/rc.local /etc/rc.local
 
