@@ -69,9 +69,14 @@ int main(int argc, char** argv)
     int dd = 3;
     int columns = 40;
     int rows = 25;
+    bool fake = false;
+    int pagedelay = 0;
+    int chardelay = 0;
+    uint8_t fchar = 0;
+    bool do_pin_test = false;
     FILE* logfp = stdout;
 
-    while ((c = getopt(argc, argv, "txd:s:c:l:")) != -1)
+    while ((c = getopt(argc, argv, "ftxd:s:c:l:p:h:n")) != -1)
     {
         if (c == 'x')
         {
@@ -97,12 +102,40 @@ int main(int argc, char** argv)
         {
             logfp = fopen(optarg, "wb");
         }
+        else if (c == 'f')
+        {
+            fake = true;
+        }
+        else if (c == 'p')
+        {
+            pagedelay = atoi(optarg);
+        }
+        else if (c == 'h')
+        {
+            chardelay = atoi(optarg);
+        }
+        else if (c == 'n')
+        {
+            do_pin_test = true;
+        }
     }
 
     init();
     setDataOutput();
     uint8_t t = 0;
     outputDataByte(0);
+
+    if (do_pin_test) {
+        uint8_t tb = 0x1;
+        for (int i = 0; i < 8; i++) {
+            printf("test byte: %X\n", tb);
+            outputDataByte(tb);
+            tb <<= 1;
+            delayMicroseconds(5 * 1000000);
+        }
+
+        exit(0);
+    }
 
     //int dd = atoi(argv[1]);
     Tools::Timer* timer = Tools::Timer::createTimer();
@@ -136,7 +169,20 @@ int main(int argc, char** argv)
         {
             fread(&time, 1, sizeof(time), fp);
         }
-        fread(test, 1, charactersInPage, fp);
+
+        if (fake) { 
+            uint8_t* ptr = test;
+            for (int r = 0; r < rows; r++) {
+                for (int c = 0; c < columns; c++) {
+                    *ptr = fchar;
+                    ptr++;
+                    fchar++;
+                }
+            }
+        } else {
+            fread(test, 1, charactersInPage, fp);
+        }
+        
         page++;
         pagesInSecond++;
         int currSecond = millis() / 1000;
@@ -162,6 +208,10 @@ int main(int argc, char** argv)
                 double t1 = timer->getTime();
                 outputDataByte(test[i]);
                 double t2 = timer->getTime();
+
+                if (chardelay > 0) {
+                    delayMicroseconds(chardelay);
+                }
                 // signal ready
                 digitalWrite(CA1, 0);
                 delayMicroseconds(dd);
@@ -191,6 +241,10 @@ int main(int argc, char** argv)
                 double t5 = timer->getTime();
                 outputDataByte(test[i+1]);
                 double t6 = timer->getTime();
+
+                if (chardelay > 0) {
+                    delayMicroseconds(chardelay);
+                }
                 // signal ready
                 digitalWrite(CA1, 0);
                 delayMicroseconds(dd);
@@ -217,6 +271,10 @@ int main(int argc, char** argv)
                 handshakeWaitTime += (t4-t3) + (t8-t7);
                 outputWaitTime += (t2-t1) + (t6-t5);
             }
+        }
+
+        if (pagedelay > 0) {
+            delayMicroseconds(pagedelay);
         }
     }
 
