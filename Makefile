@@ -59,10 +59,10 @@ bin/petpixPlayer: src/petpixPlayer.cpp bf-shared/timer.cpp
 	g++ -o bin/petpixPlayer -Ibf-shared $^
 
 $(PET_SENDER_BIN): $(PET_SENDER_SRC)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lwiringPi
 
 $(FRAME_SENDER_BIN): $(FRAME_SENDER_SRC)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lwiringPi
 
 .PHONY: stream stream80
 
