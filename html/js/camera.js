@@ -1,9 +1,9 @@
 const rVidConstraints = {
-    facingMode: 'environment'
+    facingMode: { exact: 'environment' }
 };
 
 const fVidConstraints = {
-    facingMode: 'self'
+    facingMode: { exact: 'user' }
 };
 
 const rConstraints = {
