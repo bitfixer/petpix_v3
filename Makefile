@@ -1,7 +1,23 @@
-all: bin/petpix bin/petscii_timed_sender bin/petpixPlayer bin/convert_one_video bin/petscii_convert
+# Compiler and flags
+CC = gcc
+CFLAGS = -Wall -O2
+GXXFLAGS = -std=c++11 -Ibf-shared
+
+SRC_DIR = src
+BIN_DIR = bin
+
+# PET GPIO sender programs
+PET_SENDER_SRC = $(SRC_DIR)/pet_sender.c
+PET_SENDER_BIN = $(BIN_DIR)/pet_sender
+
+FRAME_SENDER_SRC = $(SRC_DIR)/frame_sender_udp.c
+FRAME_SENDER_BIN = $(BIN_DIR)/frame_sender_udp
+
+all: bin/petpix bin/petscii_timed_sender bin/petpixPlayer bin/convert_one_video bin/petscii_convert \
+     $(PET_SENDER_BIN) $(FRAME_SENDER_BIN)
 
 clean:
-	rm bin/*
+	rm -f $(BIN_DIR)/*
 
 bin/petpix: src/petpix.h src/petpix.cpp src/timer.cpp
 	g++ -o bin/petpix src/petpix.cpp src/timer.cpp -lwiringPi
@@ -15,11 +31,14 @@ bin/petpix40.prg: src/pet_client/petpix_client_40.c
 bin/petpix80.prg: src/pet_client/petpix_client_80.c
 	cc65/bin/cl65 -t pet src/pet_client/petpix_client_80.c -o bin/petpix80.prg
 
+bin/ptest.prg: src/pet_client/ptest.c
+	cc65/bin/cl65 -t pet src/pet_client/ptest.c -o bin/ptest.prg
+
 bin/cfast.prg: src/pet_client/petpix_client_fast.c
 	cc65/bin/cl65 -t pet src/pet_client/petpix_client_fast.c -o bin/cfast.prg
 
 bin/petscii_convert: src/petscii_convert/main.cpp src/petscii_convert/dct.cpp bf-shared/Image.cpp bf-shared/timer.cpp bf-shared/Ditherer.cpp
-	g++ -o bin/petscii_convert -std=c++11 -Ibf-shared $^ -lpthread
+	g++ -o bin/petscii_convert $(GXXFLAGS) $^ -lpthread
 
 bin/udp_receiver: src/udp_receiver.cpp
 	g++ -o bin/udp_receiver src/udp_receiver.cpp
@@ -39,10 +58,16 @@ bin/interleave: src/interleave.cpp
 bin/petpixPlayer: src/petpixPlayer.cpp bf-shared/timer.cpp
 	g++ -o bin/petpixPlayer -Ibf-shared $^
 
-PHONY: stream
+$(PET_SENDER_BIN): $(PET_SENDER_SRC)
+	$(CC) $(CFLAGS) -o $@ $^
+
+$(FRAME_SENDER_BIN): $(FRAME_SENDER_SRC)
+	$(CC) $(CFLAGS) -o $@ $^
+
+.PHONY: stream stream80
+
 stream: bin/petpix
 	nc -l -k 9600 | bin/petpix -d 5
 
-PHONY: stream80
 stream80: bin/petpix
 	nc -l -k 9600 | bin/petpix -d 5 -c 80
