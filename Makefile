@@ -64,6 +64,9 @@ $(PET_SENDER_BIN): $(PET_SENDER_SRC)
 $(FRAME_SENDER_BIN): $(FRAME_SENDER_SRC)
 	$(CC) $(CFLAGS) -o $@ $^ -lwiringPi
 
+bin/petscii_timed_tcp_sender: src/petscii_timed_tcp_sender.cpp
+	g++ -o bin/petscii_timed_tcp_sender $^
+
 .PHONY: stream stream80
 
 stream: bin/petpix
