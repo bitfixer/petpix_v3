@@ -12,7 +12,6 @@ var rows = 25;
 var characters = columns*rows;
 var charDim = 8;
 
-// canvas.width = 320;
 canvas.width = columns * charDim;
 canvas.height = rows * charDim;
 
@@ -21,7 +20,11 @@ canvas.style.width = screenWidth + 'px';
 var canvasRatio = screenWidth / canvas.width;
 var canvasStyleHeight = canvas.height * canvasRatio;
 
-canvas.style.height = canvasStyleHeight + 'px';
+if (columns == 80) {
+    canvas.style.height = canvasStyleHeight + 'px';
+} else {
+    canvas.style.height = canvasStyleHeight*2 + 'px';
+}
 
 video.style.width = '1px';
 video.style.height = '1px';
@@ -90,15 +93,32 @@ function captureImage() {
     clearInterval(captureInterval);
 
     var xScale = canvas.width / video.videoWidth;
-    var scaledy = video.videoHeight * xScale;
-    var scaledYOffset = (scaledy - canvas.height) / 2.0;
-    var yOffset = scaledYOffset / xScale;
-    var outHeight = video.videoHeight - (2 * yOffset);
+    var scaledy, scaledYOffset, yOffset, outHeight;
+
+    if (columns == 40) {
+        // original logic
+        scaledy = video.videoHeight * xScale;
+        scaledYOffset = (scaledy - canvas.height) / 2.0;
+        yOffset = scaledYOffset / xScale;
+        outHeight = video.videoHeight - (2 * yOffset);
+    } else if (columns == 80) {
+        // pull twice as many vertical pixels from source
+        // halve the vertical scale so we get a taller crop
+        var adjustedScale = xScale;
+        scaledy = video.videoHeight * adjustedScale * 0.5;
+        scaledYOffset = (scaledy - canvas.height) / 2.0;
+        yOffset = scaledYOffset / (adjustedScale * 0.5);
+        outHeight = video.videoHeight - (2 * yOffset);
+    } else {
+        console.warn("Unsupported columns value:", columns);
+        return;
+    }
 
     var ctx = canvas.getContext('2d');
     preCapture();
     ctx.drawImage(video, 0, yOffset, video.videoWidth, outHeight, 0, 0, canvas.width, canvas.height);
     postCapture();
+
 
     var imdata = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
