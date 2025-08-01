@@ -20,7 +20,7 @@ canvas.style.width = screenWidth + 'px';
 var canvasRatio = screenWidth / canvas.width;
 var canvasStyleHeight = canvas.height * canvasRatio;
 
-if (columns == 80) {
+if (columns == 40) {
     canvas.style.height = canvasStyleHeight + 'px';
 } else {
     canvas.style.height = canvasStyleHeight*2 + 'px';
